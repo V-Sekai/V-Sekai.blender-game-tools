@@ -1,0 +1,35 @@
+import bpy
+op = bpy.context.active_operator
+
+op.prop_bc_export_ui_section = 'main'
+op.apply_modifiers = True
+op.export_mesh_type = 0
+op.export_mesh_type_selection = 'view'
+op.export_global_forward_selection = 'Y'
+op.export_global_up_selection = 'Z'
+op.apply_global_orientation = False
+op.selected = True
+op.include_children = False
+op.include_armatures = False
+op.include_shapekeys = True
+op.deform_bones_only = False
+op.include_animations = True
+op.include_all_actions = True
+op.export_animation_type_selection = 'sample'
+op.sampling_rate = 1
+op.keep_smooth_curves = False
+op.keep_keyframes = False
+op.keep_flat_curves = False
+op.active_uv_only = False
+op.use_texture_copies = True
+op.triangulate = True
+op.use_object_instantiation = True
+op.use_blender_profile = True
+op.sort_by_name = False
+op.export_object_transformation_type = 0
+op.export_object_transformation_type_selection = 'matrix'
+op.export_animation_transformation_type = 0
+op.export_animation_transformation_type_selection = 'matrix'
+op.open_sim = False
+op.limit_precision = False
+op.keep_bind_info = False

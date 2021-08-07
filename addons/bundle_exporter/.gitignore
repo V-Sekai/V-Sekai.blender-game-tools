@@ -1,0 +1,8 @@
+# Add any directories, files, or patterns you don't want to be tracked by version control
+*__pycache__*
+.vscode/
+.DS_Store
+*.code-workspace
+*updater_status.json
+*updater/backup/
+*updater/source/
