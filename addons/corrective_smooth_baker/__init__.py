@@ -22,11 +22,11 @@ bl_info = {
     "author": "mesh online / Modified (https://github.com/fire)",
     "version": (3, 3, 0),
     "blender": (2, 80, 0),
-    "location": "File > Import-Export | View3D > UI > Skeleton Corrective Smooth Baker",
+    "location": "View3D > UI > Skeleton Corrective Smooth Baker",
     "description": "Skeleton Corrective Smooth Baker",
     "warning": "",
     "wiki_url": "",
-    "category": "Import-Export | Object",
+    "category": "Object",
     }
 
 

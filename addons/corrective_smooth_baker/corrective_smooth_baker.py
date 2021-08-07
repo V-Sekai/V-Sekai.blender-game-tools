@@ -660,8 +660,8 @@ class CSB_PT_CorrectiveSmoothBakerPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "Corrective Smooth Baker"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS' if bpy.app.version < (2, 80) else 'UI'
-    bl_category = 'Animation' if bpy.app.version < (2, 80) else 'Mesh Online'
+    bl_region_type = 'UI'
+    bl_category = 'Skeleton Corrective Baker'
 
     @classmethod
     def poll(self, context):
