@@ -1,5 +1,3 @@
 [submodule "addons/blender-skeletal-motion-animate"]
 	path = addons/blender-skeletal-motion-animate
 	url = https://github.com/V-Sekai/blender-skeletal-motion-animate.git
-[submodule "addons/mixer"]
-	url = https://github.com/ubisoft/mixer.git
