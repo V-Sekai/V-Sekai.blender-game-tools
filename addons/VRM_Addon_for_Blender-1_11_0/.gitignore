@@ -1,0 +1,38 @@
+# すべてをignore
+*
+# すべてのディレクトリをホワイトリストに追加する
+!*/
+#
+/venv/
+# ホワイトリストに入れたいファイルを許可する
+!*.blend
+!*.glsl
+!*.jpeg
+!*.md
+!*.py
+!/.flake8
+!/.git-blame-ignore-revs
+!/.gitattributes
+!/.gitignore
+!/.pylintrc
+!/LICENSE
+!/mypy.ini
+!/poetry.lock
+!/pyproject.toml
+!/scripts/*.bat
+!/scripts/*.sh
+!/tests/vrm/in/*.vrm
+!/tests/vrm/*/out/*.vrm
+!/tests/vrm/*/out2/*.vrm
+!/tests/vrm/*/out3/*.vrm
+!/docs/*.jpg
+!/docs/*.png
+!/docs/*.pptx
+!/whitelist.txt
+!/io_scene_vrm/editor/vroid2vrc_lipsync_recipe.json
+*.blend1
+*.pyc
+.vscode/.ropeproject/config.py
+.vscode/.ropeproject/objectdb
+.vscode/tasks.json
+/tests/vrm/*/temp/
