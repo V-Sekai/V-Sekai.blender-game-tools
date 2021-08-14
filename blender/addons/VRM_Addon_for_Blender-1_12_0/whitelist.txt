@@ -133,6 +133,7 @@ mataballs
 materialmtoon
 mathutils
 matval
+maxsplit
 mball
 mbox
 messagebox
@@ -148,7 +149,6 @@ morphname
 mspec
 mtoon
 myinstance
-ndarray
 neckneck
 ngon
 nonlocal
@@ -156,7 +156,6 @@ normalmap
 normals
 notequal
 num
-numpy
 objs
 offscreen
 ortho

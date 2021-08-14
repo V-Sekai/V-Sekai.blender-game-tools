@@ -25,7 +25,6 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import bpy
 import mathutils
-import numpy
 from mathutils import Matrix, Vector
 
 from .. import deep, editor, exporter, vrm_types
@@ -77,7 +76,7 @@ class BlendModel:
         self.primitive_obj_dict: Optional[Dict[Optional[int], List[float]]] = None
         self.mesh_joined_objects = None
         self.vrm0_extension: Optional[Dict[str, Any]] = None
-        self.vrm1_draft_extension: Optional[Dict[str, Any]] = None
+        self.vrm_extension: Optional[Dict[str, Any]] = None
         self.vrm_model_build()
 
     def vrm_model_build(self) -> None:
@@ -138,13 +137,9 @@ class BlendModel:
 
     def parse_vrm_extension(self) -> None:
         json_dict = self.py_model.json
-        vrm1_draft = deep.get(json_dict, ["extensions", "VRMC_vrm-1.0_draft"])
-        if not isinstance(vrm1_draft, dict):
-            vrm1_draft = deep.get(json_dict, ["extensions", "VRMC_vrm-1.0"])
-            if not isinstance(vrm1_draft, dict):
-                vrm1_draft = None
-        if vrm1_draft is not None:
-            self.vrm1_draft_extension = vrm1_draft
+        vrm = deep.get(json_dict, ["extensions", "VRMC_vrm"])
+        if isinstance(vrm, dict):
+            self.vrm_extension = vrm
             return
 
         vrm0 = deep.get(json_dict, ["extensions", "VRM"])
@@ -526,10 +521,10 @@ class BlendModel:
         spec_version: Optional[str] = None
         hips_bone_node_index: Optional[int] = None
 
-        if self.vrm1_draft_extension is not None:
+        if self.vrm_extension is not None:
             spec_version = "1.0_draft"
             hips_index = deep.get(
-                self.vrm1_draft_extension, ["humanoid", "humanBones", "hips", "node"]
+                self.vrm_extension, ["humanoid", "humanBones", "hips", "node"]
             )
             if isinstance(hips_index, int):
                 hips_bone_node_index = hips_index
@@ -607,7 +602,9 @@ class BlendModel:
             if not image.name.startswith(image_name_prefix):
                 continue
             image_index = int(
-                "".join(image.name.split(image_name_prefix)[1:]).split("_")[0]
+                "".join(image.name.split(image_name_prefix)[1:]).split("_", maxsplit=1)[
+                    0
+                ]
             )
             if 0 <= image_index < len(json_dict["images"]):
                 # image.nameはインポート時に勝手に縮められてしまうことがあるので、jsonの値から復元する
@@ -828,8 +825,8 @@ class BlendModel:
                 parent_pos = [0, 0, 0]
             else:
                 parent_pos = self.bones[parent_node_id].head
-            b.head = numpy.array(parent_pos) + numpy.array(
-                self.axis_glb_to_blender(py_bone.position)
+            b.head = tuple(
+                Vector(parent_pos) + Vector(self.axis_glb_to_blender(py_bone.position))
             )
 
             # region temporary tail pos(glTF doesn't have bone. there defines as joints )
@@ -859,10 +856,12 @@ class BlendModel:
                         pos_diff[1] += 0.01
                     b.tail = [b.head[i] + pos_diff[i] for i in range(3)]
             else:  # 子供たちの方向の中間を見る
-                mean_relate_pos = numpy.array([0.0, 0.0, 0.0], dtype=numpy.float)
+                mean_relate_pos = Vector([0.0, 0.0, 0.0])
                 for child_id in py_bone.children:
-                    mean_relate_pos += self.axis_glb_to_blender(
-                        self.py_model.nodes_dict[child_id].position
+                    mean_relate_pos += Vector(
+                        self.axis_glb_to_blender(
+                            self.py_model.nodes_dict[child_id].position
+                        )
                     )
                 children_len = len(py_bone.children)
                 if children_len > 0:
@@ -872,7 +871,7 @@ class BlendModel:
                     ):  # ボーンの長さが1mm以下なら上に10cm延ばす
                         mean_relate_pos[1] += 0.1
 
-                b.tail = [b.head[i] + mean_relate_pos[i] for i in range(3)]
+                b.tail = tuple(Vector(b.head) + mean_relate_pos)
 
             # endregion tail pos
             self.bones[node_id] = b
@@ -1603,7 +1602,9 @@ class BlendModel:
 
             # region uv
             flatten_vrm_mesh_vert_index = [
-                ind for prim in pymesh for ind in prim.face_indices.flatten()
+                ind
+                for prim in pymesh
+                for ind in itertools.chain.from_iterable(prim.face_indices)
             ]
 
             for prim in pymesh:
@@ -1736,7 +1737,6 @@ class BlendModel:
                     ]
 
                 for base_pos, morph_pos in zip(base_points, morph_target_pos):
-                    # numpy.array毎回作るのは見た目きれいだけど8倍くらい遅い
                     shape_key_positions.append(
                         self.axis_glb_to_blender(
                             [base_pos[i] + morph_pos[i] for i in range(3)]
@@ -1825,7 +1825,7 @@ class BlendModel:
                 armature[metatag] = metainfo
 
     def json_dump(self) -> None:
-        if self.vrm1_draft_extension is not None:
+        if self.vrm_extension is not None:
             return
         vrm0_extension = self.vrm0_extension
         if not isinstance(vrm0_extension, dict):
