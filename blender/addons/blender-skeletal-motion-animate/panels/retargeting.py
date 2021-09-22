@@ -83,6 +83,14 @@ class RetargetingPanel(ToolPanel, bpy.types.Panel):
         row.scale_y = 1.4
         row.operator(retargeting.RenameVRMBonesStandard.bl_idname, text='Rename VRM Bones to Standard', icon_value=Icons.CALIBRATE.get_icon())
 
+        row = layout.row(align=True)
+        row.scale_y = 1.4
+        row.operator(retargeting.RenameStandardBonesVRM.bl_idname, text='Rename Standard Bones to VRM', icon_value=Icons.CALIBRATE.get_icon())
+
+        row = layout.row(align=True)
+        row.scale_y = 1.4
+        row.operator(retargeting.RenameVRMBonesMMD.bl_idname, text='Rename VRM Bones to MMD', icon_value=Icons.CALIBRATE.get_icon())
+
 
     def draw_import_export(self, layout):
         layout.separator()
