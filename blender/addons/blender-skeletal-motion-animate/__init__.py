@@ -44,8 +44,6 @@ classes_always_enable = [  # These non-panels will always be loaded, all non-pan
     operators.actor.PrintCurrentPose,
     operators.retargeting.RenameVRMBones,
     operators.retargeting.RenameVRMBonesStandard,
-    operators.retargeting.RenameStandardBonesVRM,
-    operators.retargeting.RenameVRMBonesMMD,    
     operators.retargeting.BuildBoneList,
     operators.retargeting.ClearBoneList,
     operators.retargeting.RetargetAnimation,
