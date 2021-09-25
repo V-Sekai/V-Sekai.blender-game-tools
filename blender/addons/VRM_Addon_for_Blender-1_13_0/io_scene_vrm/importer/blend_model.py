@@ -493,7 +493,7 @@ class BlendModel:
                 bpy.ops.import_scene.gltf(
                     filepath=indexed_vrm_file.name,
                     import_pack_images=True,
-                    bone_heuristic="BLENDER",
+                    bone_heuristic="FORTUNE",
                 )
                 full_vrm_import_success = True
             except RuntimeError:
@@ -512,7 +512,7 @@ class BlendModel:
                     bpy.ops.import_scene.gltf(
                         filepath=indexed_vrm_file.name,
                         import_pack_images=True,
-                        bone_heuristic="BLENDER",
+                        bone_heuristic="FORTUNE",
                     )
                 except RuntimeError as e:
                     self.cleanup()
