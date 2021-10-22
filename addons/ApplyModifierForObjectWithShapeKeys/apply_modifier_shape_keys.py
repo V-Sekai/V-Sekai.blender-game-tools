@@ -156,7 +156,7 @@ def applyModifierForObjectWithShapeKeys(context, modifierName, disable_armatures
 
 class ApplyModifierForObjectWithShapeKeysOperator(bpy.types.Operator):
     bl_idname = "object.apply_modifier_for_object_with_shape_keys"
-    bl_label = "Apply modifier for object with shape keys"
+    bl_label = "Apply modifier on all shape keys"
  
     def item_list(self, context):
         return [(modifier.name, modifier.name, modifier.name) for modifier in bpy.context.object.modifiers]
@@ -204,7 +204,8 @@ class DialogPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_apply_modifier_for_object_with_shape_keys"
     bl_label = "Multi Shape Keys"
     bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
+    bl_region_type = "UI"
+    bl_category = "Multi Shape Keys"
  
     def draw(self, context):
         self.layout.operator("object.apply_modifier_for_object_with_shape_keys")
@@ -216,6 +217,3 @@ def register():
 def unregister():
     bpy.utils.unregister_class(ApplyModifierForObjectWithShapeKeysOperator)
     bpy.utils.unregister_class(DialogPanel)
-
-if __name__ == '__main__':
-    register()

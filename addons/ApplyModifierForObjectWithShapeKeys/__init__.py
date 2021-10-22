@@ -41,6 +41,3 @@ def register():
 def unregister():
     from .apply_modifier_shape_keys import unregister as unreg
     unreg()
-
-if __name__ == '__main__':
-    register()
