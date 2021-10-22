@@ -22,23 +22,7 @@
 # THE SOFTWARE.
 # ------------------------------------------------------------------------------
 
-# Date: 01 February 2015
-# Blender script
-# Description: Apply modifier and remove from the stack for object with shape keys
-# (Pushing 'Apply' button in 'Object modifiers' tab result in an error 'Modifier cannot be applied to a mesh with shape keys').
-
-bl_info = {
-    "name":         "Apply modifier for object with shape keys",
-    "author":       "Przemysław Bągard, additonal contributions by Iszotic, updated to 2.93 by Fro Zen",
-    "blender":      (2,93,0),
-    "version":      (0,1,2),
-    "location":     "Context menu",
-    "description":  "Apply modifier and remove from the stack for object with shape keys (Pushing 'Apply' button in 'Object modifiers' tab result in an error 'Modifier cannot be applied to a mesh with shape keys').",
-    "category":     "Object Tools > Multi Shape Keys"
-}
-
 import bpy, math
-from bpy.utils import register_class
 from bpy.props import *
 
 # Algorithm:
@@ -225,22 +209,13 @@ class DialogPanel(bpy.types.Panel):
     def draw(self, context):
         self.layout.operator("object.apply_modifier_for_object_with_shape_keys")
 
-classes = [
-    DialogPanel,
-    ApplyModifierForObjectWithShapeKeysOperator
-]
-
-def menu_func(self, context):
-    self.layout.operator(ApplyModifierForObjectWithShapeKeysOperator.bl_idname)
-
 def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
-    bpy.types.VIEW3D_MT_object.append(menu_func)
+    bpy.utils.register_class(ApplyModifierForObjectWithShapeKeysOperator)
+    bpy.utils.register_class(DialogPanel)
  
 def unregister():
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
- 
-if __name__ == "__main__":
+    bpy.utils.unregister_class(ApplyModifierForObjectWithShapeKeysOperator)
+    bpy.utils.unregister_class(DialogPanel)
+
+if __name__ == '__main__':
     register()
