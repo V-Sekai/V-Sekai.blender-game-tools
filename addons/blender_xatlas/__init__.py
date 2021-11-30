@@ -79,13 +79,13 @@ class PG_PackProperties (PropertyGroup):
     bruteForce : BoolProperty(
         name="Brute Force",
         description="Slower, but gives the best result. If false, use random chart placement.",
-        default = False
+        default = True
         )
 
     resolution : IntProperty(
         name = "Texture Resolution (px)",
         description="Resolution of goal texture",
-        default = 256,
+        default = 2048,
         min = 0,
         max = 4096
         )
@@ -93,7 +93,7 @@ class PG_PackProperties (PropertyGroup):
     padding : IntProperty(
         name = "Padding Amount (px)",
         description="Pixels to pad each uv island",
-        default = 2,
+        default = 32,
         min = 0,
         max = 64
         )
@@ -107,13 +107,13 @@ class PG_PackProperties (PropertyGroup):
     blockAlign : BoolProperty(
         name="blockAlign",
         description="Align charts to 4x4 blocks. Also improves packing speed, since there are fewer possible chart locations to consider.",
-        default = False
+        default = True
         )
 
     maxChartSize : IntProperty(
         name = "maxChartSize",
         description="Charts larger than this will be scaled down. 0 means no limit.",
-        default = 0,
+        default = 2048,
         min = 0,
         max = 10000
         )
@@ -175,7 +175,7 @@ class PG_ChartProperties (PropertyGroup):
     textureSeamWeight : FloatProperty(
         name = "textureSeamWeight",
         description = "If > 1000, normal seams are fully respected.",
-        default = 0.5,
+        default = 1200,
         min = 0.0,
         max = 10000.0
         )
@@ -191,7 +191,7 @@ class PG_ChartProperties (PropertyGroup):
     maxIterations : IntProperty(
         name = "maxIterations",
         description="Number of iterations of the chart growing and seeding phases. Higher values result in better charts.",
-        default = 1,
+        default = 2,
         min = 0,
         max = 1000
         )
