@@ -10,7 +10,7 @@ class PBAKER_prefs(bpy.types.AddonPreferences):
 
     switch_to_cycles: BoolProperty(
         name="Bake in Eevee/Workbench (temporarily switch to Cycles)",
-        default=False
+        default=True
     )
 
     mat_id_algorithm: EnumProperty(
