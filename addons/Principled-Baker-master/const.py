@@ -7,7 +7,6 @@ MATERIAL_TAG_VERTEX = 'p_baker_material_vertex'
 NODE_INPUTS = [
     'Color',
     'Subsurface',
-    # 'Subsurface Radius', # TODO?
     'Subsurface Color',
     'Metallic',
     'Specular',
