@@ -317,7 +317,7 @@ class PBAKER_settings(PropertyGroup):
     file_path: StringProperty(
         name="",
         description="directory for textures output",
-        default="//",
+        default="//textures",
         # maxlen=1024,
         subtype='DIR_PATH'
     )
@@ -437,7 +437,7 @@ class PBAKER_settings(PropertyGroup):
     )
     image_size: IntProperty(
         name="Image Size",
-        default=512,
+        default=2048,
         min=64,
         max=5000
     )
