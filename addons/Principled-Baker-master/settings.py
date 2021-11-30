@@ -7,9 +7,8 @@ from bpy.types import PropertyGroup
 def color_mode_items(scene, context):
     if scene.file_format in ['PNG', 'TARGA', 'TIFF', 'OPEN_EXR']:
         items = [
-            ('RGB', "RGB", ""),
             ('RGBA', "RGBA", ""),
-            # ('BW', "BW", ""),  # TODO reenable and auto set to RGB/RGBA, if needed
+            ('RGB', "RGB", ""),
         ]
     else:
         items = [
