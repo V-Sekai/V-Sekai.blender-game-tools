@@ -503,7 +503,7 @@ class PBAKER_settings(PropertyGroup):
         default='SELECTED'
     )
 
-    use_material_id: BoolProperty(name="Material ID", default=False)
+    use_material_id: BoolProperty(name="Material ID", default=True)
 
     # Diffuse
     use_Diffuse: BoolProperty(
