@@ -378,12 +378,6 @@ class PBAKER_settings(PropertyGroup):
         description="Add alpha channel to Color Texture",
         default=False
     )
-    use_exclude_transparent_colors: BoolProperty(
-        name="Exclude Transparent Colors",
-        description="Exclude colors from nodes with transparency from Color Texture",
-        default=True
-    )
-
     use_smart_uv_project: BoolProperty(
         name="Auto Smart UV Project",
         description="",

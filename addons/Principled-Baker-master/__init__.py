@@ -12,7 +12,7 @@ from .suffixlist import *
 bl_info = {
     "name": "Principled Baker",
     "description": "bakes all inputs of Principled BSDF to image textures",
-    "author": "Daniel Engler",
+    "author": "Daniel Engler and modified by github.com/fire",
     "version": (0, 5, 7),
     "blender": (2, 83, 0),
     "location": "Shader Editor Toolbar",
@@ -63,7 +63,6 @@ classes = (
     PBAKER_PT_CombineChannels,
     PBAKER_PT_DuplicateObjects,
     PBAKER_PT_PrefixSuffixSettings,
-    PBAKER_PT_Misc,
 )
 
 

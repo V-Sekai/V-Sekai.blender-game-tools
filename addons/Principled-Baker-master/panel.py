@@ -501,15 +501,6 @@ class PBAKER_PT_DuplicateObjects(PBAKER_PT_SubPanel):
             col.active = False
 
 
-class PBAKER_PT_Misc(PBAKER_PT_SubPanel):
-    bl_parent_id = "PBAKER_PT_Main"
-    bl_label = "Misc Settings"
-    bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        self.layout.prop(self.settings, "use_exclude_transparent_colors")
-
-
 class PBAKER_PT_Main(Panel):
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"

@@ -114,19 +114,6 @@ def prepare_bake(mat, socket, new_socket, input_socket_name):
         for i in range(1, 3):
             if node.inputs[i].is_linked:
                 next_node = node.inputs[i].links[0].from_node
-                if settings.use_exclude_transparent_colors:
-                    if next_node.type in ALPHA_NODES.values() or next_node.type == 'BSDF_TRANSPARENT':
-                        other_i = i % 2 + 1
-                        mix_node.inputs[i].default_value = (0, 0, 0, 0)
-                        mix_node.inputs[other_i].default_value = (1, 1, 1, 0)
-                        if node.inputs[other_i].is_linked:
-                            from_socket = node.inputs[other_i].links[0].from_socket
-                            new_socket = mix_node.inputs[i]
-                    else:
-                        from_socket = node.inputs[i].links[0].from_socket
-                        new_socket = mix_node.inputs[i]
-                    prepare_bake(mat, from_socket, new_socket,
-                                 input_socket_name)
 
     elif node.type == 'ADD_SHADER' and not input_socket_name == 'Fac':
         mix_node = new_mixrgb_node(mat, 1, color, color)
