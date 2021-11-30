@@ -93,7 +93,7 @@ class PG_PackProperties (PropertyGroup):
     padding : IntProperty(
         name = "Padding Amount (px)",
         description="Pixels to pad each uv island",
-        default = 32,
+        default = 16,
         min = 0,
         max = 64
         )
@@ -191,7 +191,7 @@ class PG_ChartProperties (PropertyGroup):
     maxIterations : IntProperty(
         name = "maxIterations",
         description="Number of iterations of the chart growing and seeding phases. Higher values result in better charts.",
-        default = 2,
+        default = 1,
         min = 0,
         max = 1000
         )
@@ -223,6 +223,7 @@ class PG_SharedProperties (PropertyGroup):
     atlasLayout : EnumProperty(
         name="",
         description="How to Layout the atlases",
+        default="SPREADX",
         items=[ ('OVERLAP', "Overlap", "Overlap all the atlases"),
                 ('SPREADX', "Spread X", "Seperate each atlas along the x-axis"),
                 ('UDIM', "UDIM", "Lay the atlases out for UDIM"),
