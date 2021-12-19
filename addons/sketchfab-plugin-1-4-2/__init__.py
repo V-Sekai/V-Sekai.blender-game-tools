@@ -549,14 +549,14 @@ class SketchfabBrowserPropsProxy(bpy.types.PropertyGroup):
             name="Categories",
             items=Config.SKETCHFAB_CATEGORIES,
             description="Show only models of category",
-            default='ALL',
+            default='characters-creatures',
             update=refresh_search
             )
     face_count : EnumProperty(
             name="Face Count",
             items=Config.SKETCHFAB_FACECOUNT,
             description="Determines which meshes are exported",
-            default='ANY',
+            default='100K',
             update=refresh_search
             )
 
@@ -629,14 +629,14 @@ class SketchfabBrowserProps(bpy.types.PropertyGroup):
             name="Categories",
             items=Config.SKETCHFAB_CATEGORIES,
             description="Show only models of category",
-            default='ALL',
+            default='characters-creatures',
              )
 
     face_count : EnumProperty(
             name="Face Count",
             items=Config.SKETCHFAB_FACECOUNT,
             description="Determines which meshes are exported",
-            default='ANY',
+            default='100K',
             )
 
     sort_by : EnumProperty(
@@ -686,7 +686,7 @@ class SketchfabBrowserProps(bpy.types.PropertyGroup):
     use_preview : BoolProperty(
         name="Use Preview",
         description="Show results using preview widget instead of regular buttons with thumbnails as icons",
-        default=True
+        default=False
         )
 
     search_results = {}
