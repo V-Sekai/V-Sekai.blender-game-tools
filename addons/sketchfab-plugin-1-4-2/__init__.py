@@ -571,7 +571,7 @@ class SketchfabBrowserPropsProxy(bpy.types.PropertyGroup):
     animated : BoolProperty(
             name="Animated",
             description="Show only models with animation",
-            default=False,
+            default=True,
             update=refresh_search
             )
 
@@ -650,7 +650,7 @@ class SketchfabBrowserProps(bpy.types.PropertyGroup):
     animated : BoolProperty(
             name="Animated",
             description="Show only models with animation",
-            default=False,
+            default=True,
             )
 
     staffpick : BoolProperty(
