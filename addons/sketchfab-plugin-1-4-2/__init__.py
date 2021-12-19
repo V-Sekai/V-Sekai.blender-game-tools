@@ -564,7 +564,7 @@ class SketchfabBrowserPropsProxy(bpy.types.PropertyGroup):
             name="Sort by",
             items=get_sorting_options,
             description="Sort ",
-            default=0,
+            default=3,
             update=refresh_search,
             )
 
@@ -643,7 +643,7 @@ class SketchfabBrowserProps(bpy.types.PropertyGroup):
             name="Sort by",
             items=get_sorting_options,
             description="Sort ",
-            default=0,
+            default=3,
             update=refresh_search,
             )
 
