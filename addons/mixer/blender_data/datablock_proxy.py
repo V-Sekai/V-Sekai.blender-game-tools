@@ -532,11 +532,9 @@ class DatablockProxy(StructProxy):
 
         # HACK force updates : unsure what is strictly required
         # specifying refresh is not compatible with Grease Pencil and causes a crash
-        # specifying refresh is not compatible with Mesh and causes a crash
         update = False
         if isinstance(bl_item, T.Mesh):
-            bl_item.update_tag()
-            update = True
+            bl_item.update()
         elif isinstance(bl_item, T.Curve):
             bl_item.twist_mode = bl_item.twist_mode
         elif isinstance(bl_item, T.GreasePencil):
