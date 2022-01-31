@@ -1,0 +1,75 @@
+name: test
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test-windows:
+    runs-on: windows-2019
+    strategy:
+      matrix:
+        archive_url:
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender2.82/blender-2.82-windows64.zip
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender2.83/blender-2.83.12-windows64.zip
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender3.0/blender-3.0.0-windows-x64.zip
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Cache archive
+        id: cache-archive
+        uses: actions/cache@v2
+        with:
+          path: blender.zip
+          key: ${{ matrix.archive_url }}-archive-3
+      - name: Download archive
+        if: steps.cache-archive.outputs.cache-hit != 'true'
+        run: Invoke-WebRequest -Uri "${{ matrix.archive_url }}" -OutFile blender.zip
+      - name: Test
+        run: |
+          Expand-Archive -LiteralPath blender.zip -DestinationPath "$env:TEMP\blender"
+          & "$env:TEMP\blender\*\blender.exe" --background -noaudio --python-exit-code 1 --python scripts\generate_dynamic_tests.py
+          & "$env:TEMP\blender\*\blender.exe" --background -noaudio --python-exit-code 1 --python scripts\unittest_discover.py
+      - name: Archive failed io test result
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: VRMs
+          path: ./tests/vrm/temp
+
+  test-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        archive_url:
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender2.82/blender-2.82-macOS.dmg
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender2.83/blender-2.83.12-macOS.dmg
+          - https://ftp.nluug.nl/pub/graphics/blender/release/Blender3.0/blender-3.0.0-macos-x64.dmg
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Cache archive
+        id: cache-archive
+        uses: actions/cache@v2
+        with:
+          path: blender.dmg
+          key: ${{ matrix.archive_url }}-archive-3
+      - name: Download archive
+        if: steps.cache-archive.outputs.cache-hit != 'true'
+        run: curl -fsLS "${{ matrix.archive_url }}" -o blender.dmg
+      - name: Test
+        run: |
+          hdiutil attach blender.dmg
+          cp -fr /Volumes/Blender/Blender.app /Applications
+          hdiutil detach $(mount -t hfs | grep '/Volumes/Blender' | awk '{print $1}')
+          /Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python-exit-code 1 --python scripts/generate_dynamic_tests.py
+          /Applications/Blender.app/Contents/MacOS/blender --background -noaudio --python-exit-code 1 --python scripts/unittest_discover.py
+      - name: Archive failed io test result
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: VRMs
+          path: ./tests/vrm/temp
