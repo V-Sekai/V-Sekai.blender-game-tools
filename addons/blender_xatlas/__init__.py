@@ -449,7 +449,7 @@ class Unwrap_Lightmap_Group_Xatlas_2(bpy.types.Operator):
             use_blen_objects=True,
             group_by_object=False,
             group_by_material=False,
-            keep_vertex_order=False,
+            keep_vertex_order=True,
         )
 
         #print just for reference
