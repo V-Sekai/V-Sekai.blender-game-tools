@@ -175,7 +175,7 @@ class PG_ChartProperties (PropertyGroup):
     textureSeamWeight : FloatProperty(
         name = "textureSeamWeight",
         description = "If > 1000, normal seams are fully respected.",
-        default = 1200,
+        default = 0.5,
         min = 0.0,
         max = 10000.0
         )
@@ -223,7 +223,7 @@ class PG_SharedProperties (PropertyGroup):
     atlasLayout : EnumProperty(
         name="",
         description="How to Layout the atlases",
-        default="SPREADX",
+        default="OVERLAP",
         items=[ ('OVERLAP', "Overlap", "Overlap all the atlases"),
                 ('SPREADX', "Spread X", "Seperate each atlas along the x-axis"),
                 ('UDIM', "UDIM", "Lay the atlases out for UDIM"),
