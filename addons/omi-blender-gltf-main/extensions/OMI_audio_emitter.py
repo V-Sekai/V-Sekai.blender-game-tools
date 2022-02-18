@@ -211,7 +211,7 @@ class OMIAudioEmitterExtension(OMIExtension):
         OMIAudioEmitterExtension.registerables = []
         del bpy.types.Object.OMI_audio_pair
         # del bpy.types.Scene.OMIAudioExtensionProperties
-        #del bpy.types.Scene.OMI_audio_pairs
+        # del bpy.types.Scene.OMI_audio_pairs
 
     # @staticmethod
     # def indexOfPair(context, pair):

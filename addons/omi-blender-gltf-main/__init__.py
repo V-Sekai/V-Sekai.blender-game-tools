@@ -22,16 +22,16 @@ from io_scene_gltf2.blender.imp.gltf2_blender_scene import BlenderScene
 orig_create = BlenderScene.create
 def dump(gltf, node):
     for n in [gltf.vnodes[i] for i in node.children]:
-        print("ZZZZZZZZ", n, n.children)
+        print("dump", n, n.children)
         dump(gltf, n)
 
 def patched_create(gltf):
-    print("YYYYYY", loaded_extensions)
+    print("patched_create", loaded_extensions)
     hasEmitters = 'OMI_audio_emitter' in getattr(gltf.data, 'extensions_used', ())
     extensionData = gltf.data.extensions.get('OMI_audio_emitter', None)
     audioSources = extensionData['audioSources']
     audioEmitters = extensionData['audioEmitters']
-    print("XXXXXXXXX", audioSources[audioEmitters[0]['source']])
+    print("patched_create", audioSources[audioEmitters[0]['source']])
     inst = glTF2ImportUserExtension()
     orig_create(gltf)
     dump(gltf, gltf.vnodes[0])
@@ -113,7 +113,7 @@ def unregister():
 
 class glTF2ImportUserExtension:
     def __init__(self):
-        print("ZYZYZYZYZYZYZYZY glTF2ImportUserExtension")
+        print("glTF2ImportUserExtension")
 
     def import_gltf_hook(self, root, import_settings):
         for extension in loaded_extensions:
@@ -125,11 +125,11 @@ class glTF2ImportUserExtension:
     
 class glTF2ExportUserExtension:
     def __init__(self):
-        print("ZYZYZYZYZYZYZYZY glTF2ExportUserExtension")
+        print("glTF2ExportUserExtension")
 
     def gather_scene_hook(self, scene, blender_scene, export_settings):
-        # NOTE: currently this forwards the blender scene node back into our gltf node handler
-        print("ZYZYZYZYZYZYZYZY gather_scene_hook", scene.extensions)
+        # NOTE: Currently this forwards the blender scene node back into our gltf node handler
+        print("gather_scene_hook", scene.extensions)
         self.gather_node_hook(scene, blender_scene, export_settings)
 
     def gather_gltf_hook(self, export_settings, plan):
@@ -195,14 +195,15 @@ class OMIGLTF_PT_export_user_extensions(bpy.types.Panel):
     bl_region_type = 'TOOL_PROPS'
     bl_label = "OMI Extensions"
     bl_parent_id = "FILE_PT_operator"
-    #bl_parent_id = "GLTF_PT_export_user_extensions"
+    # FIXME: iFire 2022-02-17 Reported did not work with testing.
+    # bl_parent_id = "GLTF_PT_export_user_extensions"
 
     @classmethod
     def poll(cls, context):
         sfile = context.space_data
         operator = sfile.active_operator
         OMIGLTF_PT_export_user_extensions.bl_parent_id = "x"
-        #print("ZZZZ OMIGLTF_PT_export_user_extensions", operator.bl_idname, OMIGLTF_PT_export_user_extensions.bl_parent_id)
+        print("OMIGLTF_PT_export_user_extensions", operator.bl_idname, OMIGLTF_PT_export_user_extensions.bl_parent_id)
         return operator.bl_idname == "EXPORT_SCENE_OT_gltf"
 
     def draw_header(self, context):
