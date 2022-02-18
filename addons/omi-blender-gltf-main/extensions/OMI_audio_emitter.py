@@ -41,7 +41,6 @@ class OMIAudioEmitterExtension(OMIExtension):
         print("PROCESSING", p.source.name)
 
         ## audioSource
-        # simple de-deduping -- identical filenames will reuse the source / index
         sourceIndex = self.export.sourcesByFilename.get(p.source.filename, None)
         if sourceIndex is None:
             sourceIndex = len(self.export.audioSources)
@@ -109,15 +108,9 @@ class OMIAudioEmitterExtension(OMIExtension):
 
     def gather_asset_hook(self, asset, export_settings):
         if not self._enabled(): return
-        # TODO: incorporate add-on version somewhere
-        # asset.extras = getattr(asset, 'extras', {}) or {}
-        # asset.extras['OMI_audio_emitter'] = { 'version': VERSION }
         print("GATHER ASSET", asset.to_dict())
 
     def gather_node_hook(self, node, blender_object, export_settings):
-        # print("[OMIAudioEmitterExtension] gather_node_hook", ID, node, blender_object.__class__ == bpy.types.Scene)
-
-        # NOTE: this is one way to handle scene-level extensions
         if blender_object.__class__ == bpy.types.Scene:
             print("TODO: scene-level audio emitters", hasattr(blender_object, 'OMI_audio_pair'))
             return
@@ -159,7 +152,6 @@ class OMIAudioEmitterExtension(OMIExtension):
         extension = (node.extensions or {}).get(ID, {})
         scene = bpy.context.scene
         print("IMPORT SETTINGS", import_settings['filepath'])
-        # audioEmitters = scene.xOMI_audio_emitters.value
         if 'audioEmitter' in extension:
             emitterData = self.audioEmitters[extension['audioEmitter']]
             sourceData = self.audioSources[emitterData['source']]
@@ -182,7 +174,6 @@ class OMIAudioEmitterExtension(OMIExtension):
                     annot = AudioEmitterProperties.__annotations__[k]
                     setattr(emitter, k, v)
                     print("[OMIAudioEmitterExtension] audio import_gltf_hook emitter.", k, '=', v, '==', getattr(emitter, k))
-            # blender_object.OMI_audio_pair = self.audioPairs[extension['audioEmitter']]
             print("[OMIAudioEmitterExtension] audio import_node_hook", blender_object.OMI_audio_pair)
         pass
 
@@ -195,13 +186,6 @@ class OMIAudioEmitterExtension(OMIExtension):
 
         OMIAudioEmitterExtension.registerables = queryRegisterables(globals())
         OMIExtension.register_array(OMIAudioEmitterExtension.registerables)
-
-        # bpy.types.Scene.OMIAudioExtensionProperties = bpy.props.PointerProperty(type=OMIAudioExtensionProperties)
-
-        # NOTE: old scene level plumbing
-        # bpy.types.Scene.OMI_audio_pairs = bpy.props.CollectionProperty(type=AudioPair)
-        
-        # per-object audio emitter (... can "objects" have multiple emitters?)
         bpy.types.Object.OMI_audio_pair = bpy.props.PointerProperty(type=AudioPair)
         
     @staticmethod
@@ -210,13 +194,6 @@ class OMIAudioEmitterExtension(OMIExtension):
         OMIExtension.unregister_array(OMIAudioEmitterExtension.registerables)
         OMIAudioEmitterExtension.registerables = []
         del bpy.types.Object.OMI_audio_pair
-        # del bpy.types.Scene.OMIAudioExtensionProperties
-        # del bpy.types.Scene.OMI_audio_pairs
-
-    # @staticmethod
-    # def indexOfPair(context, pair):
-    #     audioPairs = [c.OMI_audio_pair for c in bpy.data.objects if c.OMI_audio_pair is not None ]
-    #     return audioPairs.index(pair)
 
     @staticmethod
     def gatherPairs(context):
@@ -230,7 +207,6 @@ class OMIAudioEmitterExtension(OMIExtension):
 OMIAudioEmitterExtension.registerables = []
 
 class AudioSourceProperties(bpy.types.PropertyGroup):
-    # index: bpy.props.IntProperty(name="index")
     name: bpy.props.StringProperty(name="name")
     mimeType: bpy.props.StringProperty(name="mimeType")
     filename: bpy.props.StringProperty(
@@ -246,7 +222,7 @@ class ResetAudioPair(bpy.types.Operator):
     bl_label = "Clear"
     target = None
     def execute(self, context):
-        object = ResetAudioPair.target #findObjectByHash(context, self.object_path)
+        object = ResetAudioPair.target
         pair = object.OMI_audio_pair
         pair.reset()
         return {'FINISHED'}
@@ -291,13 +267,12 @@ class AudioPair(bpy.types.PropertyGroup, AudioPlayback):
 class PreviewEmitter(bpy.types.Operator):
     bl_idname = "wm.omi_preview_emitter"
     bl_label = "Preview"
-    # object_path: bpy.props.StringProperty(name="object_path")
 
     target = None
     def execute(self, context):
-        object = PreviewEmitter.target #findObjectByHash(context, self.object_path)
+        object = PreviewEmitter.target
         emitter = object.OMI_audio_pair.emitter
-        clip = object.OMI_audio_pair.source #OMIAudioEmitterExtension.findClipByIndex(context, emitter.source)
+        clip = object.OMI_audio_pair.source
         self.report({'INFO'}, str(self) + " TODO: Preview Emitter " + str(clip.filename if clip else clip) + "//"+str(clip))
         object.OMI_audio_pair.togglePlayback()
         return {'FINISHED'}
@@ -330,23 +305,18 @@ class ObjectEmitterPanel(bpy.types.Panel):
     bl_idname = "NODE_PT_omi_object_audio_emitter"
     bl_parent_id = "NODE_PT_omi_extensions"
     bl_space_type = 'PROPERTIES'
-    # bl_options = {'HIDE_HEADER'}
     bl_region_type = 'WINDOW'
     bl_context = 'object'
 
     def draw(self, context):
         box = self.layout.box()
-        # box.label(text="asdfasdf")
         self._draw(context, box, context.object)
 
     def _draw(self, context, layout, object):
         layout = layout.box()
         d = getattr(object, 'OMI_audio_pair', None)
-        # print("ObjectEmitterPanel._draw", d.source, d.emitter)
         ClipsOperator.target = object
         row = layout.split(factor=0.75)
-        # row.operator_menu_enum(ClipsOperator.bl_idname, "clip", text=d.source.name if d.source else "", icon="SCENE")
-        #layout.label(text="index: " + str(emitter.source))
         row.prop(d.source, 'filename')
         row = row.split(factor=0.5)
         remove_operator = row.operator("wm.reset_audio_pair", icon="X", text="")
@@ -359,7 +329,6 @@ class ObjectEmitterPanel(bpy.types.Panel):
         op = col.operator("wm.omi_preview_emitter", icon=ico, text="")
         col.enabled = os.path.exists(d.source.filename)
         PreviewEmitter.target = object
-        # [layout.prop(d.source, n) for n in ['filename']] #'mimeType',
         if not d.source.filename: return
         [layout.prop(d.emitter, n) for n in [
             'name',
@@ -367,52 +336,6 @@ class ObjectEmitterPanel(bpy.types.Panel):
             'gain', 'loop', 'playing',
             'coneInnerAngle', 'coneOuterAngle', 'coneOuterGain', 
             'distanceModel', 'maxDistance', 'refDistance', 'rolloffFactor']]
-
-# # Scene custom property
-# class SceneAudioSourcesPanel(bpy.types.Panel):
-#     bl_label = 'Audio Clips'
-#     bl_idname = "NODE_PT_omi_scene_audio_sources"
-#     bl_parent_id = "NODE_PT_omi_scene_extensions"
-#     bl_space_type = 'PROPERTIES'
-#     bl_region_type = 'WINDOW'
-#     bl_context = 'scene'
-# 
-#     def draw(self, context):
-#         layout = self.layout
-#         for clip in context.scene.OMI_audio_sources.value:
-#             box = layout.box()
-#             row = box.row()
-#             preview_operator = row.operator("wm.omi_preview_audio", icon="PLAY")
-#             preview_operator.source = clip.index
-#             remove_operator = row.operator("wm.remove_audio_source", icon="X")
-#             remove_operator.source = clip.index
-#             box.prop(clip, 'name')
-#             box.prop(clip, 'filename')
-#             #layout.separator()
-#         layout.operator(
-#             "wm.add_audio_source",
-#             text="Add Audio Clip",
-#             icon="ADD"
-#         )
-# 
-# class SceneEmitterPanel(bpy.types.Panel):
-#     bl_label = 'Audio Emitter'
-#     bl_idname = "NODE_PT_omi_scene_audio_emitter"
-#     bl_parent_id = "NODE_PT_omi_scene_extensions"
-#     bl_space_type = 'PROPERTIES'
-#     # bl_options = {'HIDE_HEADER'}
-#     bl_region_type = 'WINDOW'
-#     bl_context = 'scene'
-#     def draw(self, context):
-#         ObjectEmitterPanel._draw(self, context, self.layout, context.scene)
-
-### GLTF Export Screen
-# class OMIAudioExtensionProperties(bpy.types.PropertyGroup):
-#   enabled: bpy.props.BoolProperty(
-#         name="Export OMI Audio Components",
-#         description='Include this extension in the exported glTF file.',
-#         default=True
-#     )
 
 class OMIAudioGLTFExportPanel(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'
@@ -428,10 +351,8 @@ class OMIAudioGLTFExportPanel(bpy.types.Panel):
         operator = sfile.active_operator
         return True or operator.bl_idname == "EXPORT_SCENE_OT_gltf"
 
-    # enabled = bpy.props.BoolProperty(name="enabled")
     def draw_header(self, context):
         pass
-        #self.layout.prop(self.enabled, 'enabled', text="")
 
     def draw(self, context):
         layout = self.layout
@@ -457,20 +378,3 @@ def omi_emitter_debug():
         clip = scene.OMI_audio_sources.value.add()
         clip.name = "test clip"
         clip.filename = "test_clip.mp3"
-
-
-
-
-
-
-# def hashObject(context, object):
-#     return str(object.as_pointer())
-# 
-# def findObjectByHash(context, ptr):
-#     if hashObject(context.scene) == ptr:
-#         return context.scene
-#     for obj in bpy.data.objects:
-#         if hashObject(obj) == ptr:
-#             return obj
-#     return None
-# 

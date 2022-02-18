@@ -36,7 +36,6 @@ class OMIExtension:
     @staticmethod
     def foreach(array, callback):
         for v in array:
-            #print("foreach", callback.__name__, v)
             try:
                 callback(v)
             except BaseException as e:

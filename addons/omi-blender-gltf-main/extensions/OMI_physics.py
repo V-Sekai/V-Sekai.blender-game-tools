@@ -13,6 +13,5 @@ class OMIPhysicsExtension(OMIExtension):
 
     def gather_node_hook(self, node, blender_object, export_settings):
         return
-        #print("[OMI] gather_node_hook", ID, node)
         node.extensions = getattr(node, 'extensions', {})
         node.extensions[ID] = { "physicsEmitter": 123}

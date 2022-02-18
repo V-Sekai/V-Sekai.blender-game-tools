@@ -44,7 +44,6 @@ def patched_create(gltf):
         inst.import_node_hook(node, n.blender_object, gltf.import_settings)
 BlenderScene.create = patched_create
 
-#### monkey patching until io_scene_gltf2 2.93.1 support can be assumed
 from io_scene_gltf2.blender.exp import gltf2_blender_export
 from io_scene_gltf2.io.exp.gltf2_io_user_extensions import export_user_extensions
 orig_gather_gltf = gltf2_blender_export.__gather_gltf
@@ -84,11 +83,8 @@ def register():
         else:
             print("Warning -- no .register found", Ext)
         instance = Ext()
-        # print("[OMI]", instance.__module__)
         loaded_extensions.append(instance)
     print("[OMI] extensions:", [ext.__module__ for ext in loaded_extensions])
-    # class tmp: extensions = {}
-    # extensions[0].gather_gltf_hook(tmp(), {})
 
 def unregister():
     global loaded_extensions
@@ -97,16 +93,14 @@ def unregister():
     del bpy.types.Scene.OMIExtensions
 
     print("[OMI] unregister bpy.types", registerables)
-    OMIExtension.unregister_array(registerables) # unregister main panels below
+    OMIExtension.unregister_array(registerables)
+    # unregister main panels below
     registerables = []
 
     print("[OMI] unregister extensions", registerables)
     for extension in loaded_extensions:
         if hasattr(extension.__class__, 'unregister'):
-            if True: #try:
-                extension.__class__.unregister()
-            #except Exception as e:
-            #    print("unregister error", extension.__class__, e)
+            extension.__class__.unregister()
         else:
             print("Warning -- no .unregister found", extension.__class__)
     loaded_extensions = []
@@ -176,7 +170,7 @@ class OMIObjectExtensions(bpy.types.Panel):
     bl_context = 'object'
 
     def draw(self, context):
-        pass # self.layout.label(text="OMIObjectPanel")
+        pass
 
 class OMISceneExtensions(bpy.types.Panel):
     bl_label = 'OMI Extensions'

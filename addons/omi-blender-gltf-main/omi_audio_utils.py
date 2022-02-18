@@ -1,4 +1,4 @@
-# WIP helper utilitilies to support Audio Preview -- humbletim 2021.12.14
+# helper utilitilies to support Audio Preview -- humbletim 2021.12.14
 
 import bpy
 import aud
@@ -49,9 +49,6 @@ class AudioPlayback:
         device.listener_orientation = cam.rotation_quaternion
         print("PLAYING", object, self.source, self.emitter)
         sound = aud.Sound(self.source.filename)
-        # see https://docs.blender.org/api/current/aud.html
-        # TODO: "aud" supports lots of OpenAL parameters
-        #  (including stuff like cone_angle_inner...)
         handle = device.play(sound)
         handle.volume = self.emitter.gain
         handle.location = object.location
