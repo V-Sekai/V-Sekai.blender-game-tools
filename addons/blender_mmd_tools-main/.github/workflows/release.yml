@@ -1,0 +1,51 @@
+on:
+  push:
+    branches:
+      - "!*"
+    tags:
+      - "v*"
+
+name: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Copy LICENSE file
+        run: cp -p LICENSE mmd_tools/
+
+      - name: Create a zip
+        run: zip -r -9 artifact.zip mmd_tools/
+
+      - name: Create a Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: false
+
+      - name: Branch name
+        id: branch_name
+        run: |
+          echo ::set-output name=name::${GITHUB_REF#refs/*/}
+          echo ::set-output name=branch::${GITHUB_REF#refs/heads/}
+          echo ::set-output name=tag::${GITHUB_REF#refs/tags/}
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifact.zip
+          asset_name: mmd_tools-${{ steps.branch_name.outputs.tag }}.zip
+          asset_content_type: application/zip
