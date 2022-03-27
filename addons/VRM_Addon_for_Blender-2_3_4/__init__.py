@@ -14,13 +14,14 @@ https://opensource.org/licenses/mit-license.php
 bl_info = {
     "name": "VRM format",
     "author": "saturday06, iCyP",
-    "version": (2, 2, 0),
+    "version": (2, 3, 4),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Import-Edit-Export VRM",
     "warning": "",
     "support": "COMMUNITY",
     "wiki_url": "",
+    "doc_url": "https://vrm-addon-for-blender.info",
     "tracker_url": "https://github.com/saturday06/VRM_Addon_for_Blender/issues",
     "category": "Import-Export",
 }

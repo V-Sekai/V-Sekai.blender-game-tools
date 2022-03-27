@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import bgl
 import bmesh
 import bpy
-from mathutils import Matrix, Quaternion
+from mathutils import Matrix, Quaternion, Vector
 
 from ..common import deep, gltf
 from ..common.char import INTERNAL_NAME_PREFIX
@@ -1189,7 +1189,11 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
                 "gltf_keep_original_textures": False,
             }
             try:
-                if bpy.app.version >= (2, 91):
+                if bpy.app.version >= (3, 2):
+                    # https://github.com/KhronosGroup/glTF-Blender-IO/blob/master/addons/io_scene_gltf2/blender/exp/gltf2_blender_gather_primitives.py#L71-L96
+                    # https://github.com/KhronosGroup/glTF-Blender-IO/blob/9e08d423a803da52eb08fbc93d9aa99f3f681a27/addons/io_scene_gltf2/blender/exp/gltf2_blender_gather_materials.py#L42
+                    gltf2_io_material = gather_material(b_mat, 0, export_settings)
+                elif bpy.app.version >= (2, 91):
                     # https://github.com/KhronosGroup/glTF-Blender-IO/blob/abd8380e19dbe5e5fb9042513ad6b744032bc9bc/addons/io_scene_gltf2/blender/exp/gltf2_blender_gather_materials.py#L32
                     gltf2_io_material = gather_material(b_mat, export_settings)
                 else:
@@ -1298,7 +1302,9 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
         for b_mat in used_materials:
             material_properties_dic: Dict[str, Any] = {}
             pbr_dic: Dict[str, Any] = {}
-            if b_mat.get("vrm_shader") == "MToon_unversioned":
+            if not b_mat.node_tree:
+                material_properties_dic, pbr_dic = make_non_vrm_mat_dic(b_mat)
+            elif b_mat.get("vrm_shader") == "MToon_unversioned":
                 for node in b_mat.node_tree.nodes:
                     if node.type == "OUTPUT_MATERIAL":
                         mtoon_shader_node = node.inputs["Surface"].links[0].from_node
@@ -1361,7 +1367,35 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
         morph_normal_diff_dic = {}
         vert_base_normal_dic = OrderedDict()
         for kb in mesh_data.shape_keys.key_blocks:
-            vert_base_normal_dic.update({kb.name: kb.normals_vertex_get()})
+            # 頂点のノーマルではなくsplit(loop)のノーマルを使う
+            # https://github.com/KhronosGroup/glTF-Blender-IO/pull/1129
+            split_normals = kb.normals_split_get()
+
+            vertex_normal_vectors = [Vector([0.0, 0.0, 0.0])] * len(mesh_data.vertices)
+            for loop_index in range(len(split_normals) // 3):
+                loop = mesh_data.loops[loop_index]
+                v = Vector(
+                    [
+                        split_normals[loop_index * 3 + 0],
+                        split_normals[loop_index * 3 + 1],
+                        split_normals[loop_index * 3 + 2],
+                    ]
+                )
+                vertex_normal_vectors[loop.vertex_index] = (
+                    vertex_normal_vectors[loop.vertex_index] + v
+                )
+
+            vertex_normals = [0.0] * len(vertex_normal_vectors) * 3
+            for index, _ in enumerate(vertex_normal_vectors):
+                n = vertex_normal_vectors[index].normalized()
+                if n.magnitude < float_info.epsilon:
+                    vertex_normals[index * 3 + 2] = 1.0
+                    continue
+                vertex_normals[index * 3 + 0] = n[0]
+                vertex_normals[index * 3 + 1] = n[1]
+                vertex_normals[index * 3 + 2] = n[2]
+
+            vert_base_normal_dic.update({kb.name: vertex_normals})
         reference_key_name = mesh_data.shape_keys.reference_key.name
         for k, v in vert_base_normal_dic.items():
             if k == reference_key_name:
@@ -1515,9 +1549,8 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
             bm_temp.to_mesh(mesh_data)
             bm_temp.free()
 
-            if mesh_data.has_custom_normals:
-                mesh_data.calc_loop_triangles()
-                mesh_data.calc_normals_split()
+            mesh_data.calc_loop_triangles()
+            mesh_data.calc_normals_split()
 
             bm = bmesh.new()
             bm.from_mesh(mesh_data)
@@ -1605,22 +1638,10 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
                         uv_layer = bm.loops.layers.uv[uvlayer_name]
                         uv_list += [loop[uv_layer].uv[0], loop[uv_layer].uv[1]]
 
-                    vert_normal = [0, 0, 0]
-                    if mesh_data.has_custom_normals:
-                        tri = mesh_data.loop_triangles[face.index]
-                        vid = -1
-                        for i, _vid in enumerate(tri.vertices):
-                            if _vid == loop.vert.index:
-                                vid = i
-                        if vid == -1:
-                            print("something wrong in custom normal export")
-                        vert_normal = tri.split_normals[vid]
-                    else:
-                        if face.smooth:
-                            vert_normal = loop.vert.normal
-                        else:
-                            vert_normal = face.normal
-
+                    # 頂点のノーマルではなくloopのノーマルを使う。これで失うものはあると思うが、
+                    # glTF 2.0アドオンと同一にしておくのが無難だろうと判断。
+                    # https://github.com/KhronosGroup/glTF-Blender-IO/pull/1127
+                    vert_normal = mesh_data.loops[loop.index].normal
                     vertex_key = (*uv_list, *vert_normal, loop.vert.index)
                     cached_vert_id = unique_vertex_dic.get(
                         vertex_key
