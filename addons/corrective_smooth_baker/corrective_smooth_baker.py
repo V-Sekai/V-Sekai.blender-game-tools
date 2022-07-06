@@ -248,7 +248,7 @@ class CSB_OT_ModalTimerOperator(bpy.types.Operator):
         # increase pose index
         self._pose_index += 1
         # increase optimize stage index
-        if self._pose_index == math.ceil(len(self._inverse_bind_pose_dic)*bake_quality):
+        if self._pose_index == max(math.ceil(len(self._inverse_bind_pose_dic)*bake_quality), 80):
             # restore current poses
             self.restore_current_poses()
             # increase optimize stage index
@@ -471,7 +471,7 @@ class CSB_OT_ModalTimerOperator(bpy.types.Operator):
                     # We simply convert centimeters to meters.
                     deviation_threshold = 0.01 * context.scene.deviation_threshold
                     self.optimize_stage_4(self._arm, self._objs, context.scene.twist_angle, deviation_threshold, bake_quality, context.scene.bake_range)
-                    message_text = "Twisting bones: {}/{}".format(self._pose_index, math.ceil(len(self._inverse_bind_pose_dic)*bake_quality))
+                    message_text = "Twisting bones: {}/{}".format(self._pose_index, max(math.ceil(len(self._inverse_bind_pose_dic)*bake_quality), 80))
                     context.scene.progress_bar = message_text
                 elif self._optimize_stage_index == 5:
                     self.optimize_stage_5()
@@ -496,6 +496,17 @@ class CSB_OT_ModalTimerOperator(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
+        arm_count = 0
+        obj_count = 0
+        for ob in bpy.context.selected_objects:
+            if 'ARMATURE' == ob.type:
+                arm_count += 1
+            if 'MESH' == ob.type:
+                obj_count += 1
+        if not (context.mode == 'OBJECT' and arm_count == 1 and obj_count >= 1):
+            self.report({'ERROR'}, "Please select one armature and at least one mesh in 'OBJECT' mode, then try again.")
+            return {'CANCELLED'}
+
         arm = None
         objs = []
 
@@ -604,8 +615,8 @@ def init_properties():
 
     bpy.types.Scene.influence_bones = IntProperty(
         name = "Influence Bones",
-        description = "Max influence bones per vertex",
-        default = 4,
+        description = "Max influence bones per vertex, please decrease the value (such as 4) for mobile devices",
+        default = 8,
         min = 1,
         max = 128)
 
@@ -660,19 +671,12 @@ class CSB_PT_CorrectiveSmoothBakerPanel(bpy.types.Panel):
     """Creates a Panel in the Object properties window"""
     bl_label = "Corrective Smooth Baker"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = 'Skeleton Corrective Baker'
+    bl_region_type = 'TOOLS' if bpy.app.version < (2, 80) else 'UI'
+    bl_category = 'Animation' if bpy.app.version < (2, 80) else 'Mesh Online'
 
     @classmethod
     def poll(self, context):
-        arm_count = 0
-        obj_count = 0
-        for ob in bpy.context.selected_objects:
-            if 'ARMATURE' == ob.type:
-                arm_count += 1
-            if 'MESH' == ob.type:
-                obj_count += 1
-        return (bpy.context.mode == 'OBJECT' and arm_count == 1 and obj_count >= 1)
+        return True
 
 
     def draw(self, context):
