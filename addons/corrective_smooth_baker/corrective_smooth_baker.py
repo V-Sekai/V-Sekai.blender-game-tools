@@ -642,7 +642,7 @@ def init_properties():
                    ('PINV', "Pseudo Inverse Solver", "Pseudo inverse solver"),
                    ('LSTSQ', "Least Square Solver", "Least square solver"),
                    ('SVD', "SVD Solver", "SVD solver")),
-            default='PINV',
+            default='SVD',
             )
 
     bpy.types.Scene.refresh_frequency = FloatProperty(
