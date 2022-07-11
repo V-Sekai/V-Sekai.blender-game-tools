@@ -603,20 +603,20 @@ def init_properties():
                    ('1.0', "High", "High quality with slow speed"),
                    ('2.0', "Very High", "Very high quality with much slower speed"),
                    ('3.0', "Highest", "Highest quality with slowest speed")),
-            default='1.0',
+            default='3.0',
             )
 
     bpy.types.Scene.twist_angle = FloatProperty(
         name = "Twist Angle",
         description = "Maximum twist angle of the deform bones",
-        default = 45.0,
+        default = 90.0,
         min = 0.0,
         max = 360.0)
 
     bpy.types.Scene.influence_bones = IntProperty(
         name = "Influence Bones",
         description = "Max influence bones per vertex, please decrease the value (such as 4) for mobile devices",
-        default = 8,
+        default = 4,
         min = 1,
         max = 128)
 
