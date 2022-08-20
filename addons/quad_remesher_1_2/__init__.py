@@ -20,16 +20,16 @@
 
 # <pep8 compliant>
 
-__QR_plugin_version__ = "1.1"
+__QR_plugin_version__ = "1.2"
 
 bl_info = {
 	#"name": "Quad Remesher "+__QR_plugin_version__+" Bridge",  # (it break the display of all plugins... in prefs>Addons)
-	"name": "Quad Remesher 1.1 Bridge",
+	"name": "Quad Remesher 1.2 Bridge",
 	"author": "Maxime",
-	"version": (1, 1, 0),    # see __QR_plugin_version__
+	"version": (1, 2, 1),    # see __QR_plugin_version__
 	"blender": (2, 80, 0),
 	#"description": "Quad Remesher "+__QR_plugin_version__+" Bridge",
-	"description": "Quad Remesher 1.1 Bridge",
+	"description": "Quad Remesher 1.2 Bridge",
 	"location": "",
 	"warning": "",
 	"wiki_url": "",
