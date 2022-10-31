@@ -3,3 +3,5 @@ __pycache__/
 .DS_Store
 
 *.pyc
+
+addons/blenderkit/blenderkit_updater/blenderkit_updater_status.json
