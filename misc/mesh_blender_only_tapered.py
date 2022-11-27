@@ -1,5 +1,3 @@
-# MIT LICENSE
-# Modified by iFire#6518 (Discord name)
 # from https://blender.stackexchange.com/a/75049/33589
 
 import bpy
@@ -7,8 +5,7 @@ import mathutils
 from mathutils import Vector
 from math import *
 
-
-def CreateMesh(meshType):
+def CreateMesh():
 
     obj = bpy.context.active_object
 
@@ -17,7 +14,7 @@ def CreateMesh(meshType):
     elif obj.type != "ARMATURE":
         self.report({"ERROR"}, "Armature expected")
     else:
-        processArmature(bpy.context, obj, meshType=meshType)
+        processArmature(bpy.context, obj)
 
 
 # Create the base object from the armature
@@ -30,31 +27,13 @@ def meshFromArmature(arm):
 
 
 # Create the bone geometry (vertices and faces)
-def boneGeometry(l1, l2, x, z, baseSize, l1Size, l2Size, base, meshType):
+def boneGeometry(l1, l2, x, z, baseSize, l1Size, l2Size, base):
 
-    if meshType == "Tapered":
-        print(meshType)
-        x1 = x * baseSize * l1Size
-        z1 = z * baseSize * l1Size
+    x1 = x * baseSize * l1Size
+    z1 = z * baseSize * l1Size
 
-        x2 = x * baseSize * l2Size
-        z2 = z * baseSize * l2Size
-    elif meshType == "Box":
-        print(meshType)
-        lSize = (l1Size + l2Size) / 2
-        x1 = x * baseSize * lSize
-        z1 = z * baseSize * lSize
-
-        x2 = x * baseSize * lSize
-        z2 = z * baseSize * lSize
-
-    else:  # default to Pyramid
-        print(meshType)
-        x1 = x * baseSize * l1Size
-        z1 = z * baseSize * l1Size
-
-        x2 = Vector((0, 0, 0))
-        z2 = Vector((0, 0, 0))
+    x2 = x * baseSize * l2Size
+    z2 = z * baseSize * l2Size
 
     verts = [
         l1 - x1 + z1,
@@ -80,8 +59,8 @@ def boneGeometry(l1, l2, x, z, baseSize, l1Size, l2Size, base, meshType):
 
 
 # Process the armature, goes through its bones and creates the mesh
-def processArmature(context, arm, genVertexGroups=True, meshType="Pyramid"):
-    print("processing armature {0} {1}".format(arm.name, meshType))
+def processArmature(context, arm, genVertexGroups=True):
+    print("processing armature {0}".format(arm.name))
 
     # Creates the mesh object
     meshObj = meshFromArmature(arm)
@@ -123,8 +102,7 @@ def processArmature(context, arm, genVertexGroups=True, meshType="Pyramid"):
                 baseSize,
                 editBoneHeadRadius,
                 editBoneTailRadius,
-                baseIndex,
-                meshType,
+                baseIndex
             )
 
             verts.extend(newVerts)
@@ -172,4 +150,4 @@ class MeshFromArmatureOperator(bpy.types.Operator):
 
 
 if __name__ == "__main__":
-    CreateMesh("Tapered")
+    CreateMesh()
