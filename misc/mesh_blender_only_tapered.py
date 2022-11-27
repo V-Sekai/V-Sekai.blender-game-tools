@@ -1,5 +1,5 @@
 # MIT LICENSE
-# Authored by iFire#6518 (Discord name)
+# Modified by iFire#6518 (Discord name)
 # from https://blender.stackexchange.com/a/75049/33589
 
 import bpy
