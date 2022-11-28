@@ -603,13 +603,13 @@ def init_properties():
                    ('1.0', "High", "High quality with slow speed"),
                    ('2.0', "Very High", "Very high quality with much slower speed"),
                    ('3.0', "Highest", "Highest quality with slowest speed")),
-            default='3.0',
+            default='1.0',
             )
 
     bpy.types.Scene.twist_angle = FloatProperty(
         name = "Twist Angle",
         description = "Maximum twist angle of the deform bones",
-        default = 90.0,
+        default = 45.0,
         min = 0.0,
         max = 360.0)
 
