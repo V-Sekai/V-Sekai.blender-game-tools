@@ -609,7 +609,7 @@ def init_properties():
     bpy.types.Scene.twist_angle = FloatProperty(
         name = "Twist Angle",
         description = "Maximum twist angle of the deform bones",
-        default = 45.0,
+        default = 22.5,
         min = 0.0,
         max = 360.0)
 
