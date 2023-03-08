@@ -58,7 +58,7 @@ class ImportObjSeq(bpy.types.Operator, ImportHelper):
 
         def import_obj(filepath):
             with redirect_stdout(None):
-                bpy.ops.import_scene.obj(filepath=filepath, split_mode="OFF")
+                bpy.ops.import_scene.obj(filepath=filepath, filter_glob='*.obj;*.mtl', use_edges=True, use_smooth_groups=True, use_split_objects=False, use_split_groups=False, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0.0, axis_forward='-Z', axis_up='Y')
 
         # import first obj
         import_obj(str(filepaths[0]))
