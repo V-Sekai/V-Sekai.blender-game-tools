@@ -591,8 +591,8 @@ def init_properties():
     bpy.types.Scene.deviation_threshold = FloatProperty(
         name = "Deviation Threshold",
         description = "Skip all the vertices whose position changes(in centimeters) are below the deviation threshold",
-        default = 0.1,
-        min = 0.0,
+        default = 0.01,
+        min = 0.01,
         max = 1000000.0)
 
     bpy.types.Scene.bake_quality = EnumProperty(
@@ -603,21 +603,21 @@ def init_properties():
                    ('1.0', "High", "High quality with slow speed"),
                    ('2.0', "Very High", "Very high quality with much slower speed"),
                    ('3.0', "Highest", "Highest quality with slowest speed")),
-            default='1.0',
+            default='3.0',
             )
 
     bpy.types.Scene.twist_angle = FloatProperty(
         name = "Twist Angle",
         description = "Maximum twist angle of the deform bones",
-        default = 22.5,
+        default = 80.0,
         min = 0.0,
         max = 360.0)
 
     bpy.types.Scene.influence_bones = IntProperty(
         name = "Influence Bones",
         description = "Max influence bones per vertex, please decrease the value (such as 4) for mobile devices",
-        default = 4,
-        min = 1,
+        default = 8,
+        min = 8,
         max = 128)
 
     bpy.types.Scene.prune_threshold = FloatProperty(
@@ -648,7 +648,7 @@ def init_properties():
     bpy.types.Scene.refresh_frequency = FloatProperty(
         name = "Refresh Frequency",
         description = "How often(fps) to refresh the status bar, too high refresh frequency may reduce the baking speed",
-        default = 1.0,
+        default = 15.0,
         min = 0.1,
         max = 10.0)
 
