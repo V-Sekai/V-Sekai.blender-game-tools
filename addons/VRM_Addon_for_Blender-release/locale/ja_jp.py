@@ -188,8 +188,8 @@ translation_dictionary = {
     + "親ボーンへのウエイトを自動で割り当てます。",
     (
         "*",
-        'vertex index "{vertex_index}" has too many(over 4) weight in "{mesh_name}". '
-        + "It will be truncated to 4 descending order by its weight.",
+        'vertex index "{vertex_index}" has too many(over 8) weight in "{mesh_name}". '
+        + "It will be truncated to 8 descending order by its weight.",
     ): "「{mesh_name}」の頂点id「{vertex_index}」に影響を与えるボーンが5以上あります。"
     + "重い順に4つまでエクスポートされます。",
     (
