@@ -464,11 +464,11 @@ class WM_OT_vrm_validator(bpy.types.Operator):  # type: ignore[misc]
                             and g.weight < float_info.epsilon
                         ):
                             weight_count += 1
-                    if weight_count > 8 and vertex_error_count < 5:
+                    if weight_count > 4 and vertex_error_count < 5:
                         info_messages.append(
                             pgettext(
-                                'vertex index "{vertex_index}" has too many(over 8) weight in "{mesh_name}". '
-                                + "It will be truncated to 8 descending order by its weight."
+                                'vertex index "{vertex_index}" has too many(over 4) weight in "{mesh_name}". '
+                                + "It will be truncated to 4 descending order by its weight."
                             ).format(vertex_index=v.index, mesh_name=mesh.name)
                         )
                         vertex_error_count = vertex_error_count + 1

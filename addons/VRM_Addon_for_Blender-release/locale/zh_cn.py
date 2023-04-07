@@ -73,9 +73,9 @@ translation_dictionary = {
     + "自动添加权重到父级骨骼。",
     (
         "*",
-        'vertex index "{vertex_index}" has too many(over 8) weight in "{mesh_name}". '
+        'vertex index "{vertex_index}" has too many(over 4) weight in "{mesh_name}". '
         + "It will be truncated to 4 descending order by its weight.",
-    ): "「{mesh_name}」的顶点id「{vertex_index}」有太多权重(over 8)。"
+    ): "「{mesh_name}」的顶点id「{vertex_index}」有太多权重(over 4)。"
     + "按照权重缩减到4。",
     (
         "*",
