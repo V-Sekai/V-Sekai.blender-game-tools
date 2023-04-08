@@ -616,8 +616,8 @@ def init_properties():
     bpy.types.Scene.influence_bones = IntProperty(
         name = "Influence Bones",
         description = "Max influence bones per vertex, please decrease the value (such as 4) for mobile devices",
-        default = 8,
-        min = 8,
+        default = 4,
+        min = 4,
         max = 128)
 
     bpy.types.Scene.prune_threshold = FloatProperty(
