@@ -1,0 +1,27 @@
+1.1.0
+- Code refactor - now introducing new features will be easier
+- Autokeyframing feature
+- UI/UX improvements (more options and context-aware tools)
+- Bug fixes for armature generation
+  - Duplicated geometry now use the same modifiers/mesh data/materials as the originals
+  - Generator now properly treats modifiers and non-mesh object in the selection
+  - Animated physics assets now treated correctly
+
+1.2.0
+- Cloth simulations bake
+- UI improvements
+- Bug fixes
+
+1.3.0
+- Blender 2.8 support
+- Bug fixes
+
+1.4.1
+
+- Added transformation cleaning options, fixed a bug with armature as parent always having OBJECT type.
+- Added transformation cleaning options
+- Minor bugfixes
+- Code cleanup and minor refactoring
+
+1.4.2
+  - Fixed Blender API support for 2.9+
