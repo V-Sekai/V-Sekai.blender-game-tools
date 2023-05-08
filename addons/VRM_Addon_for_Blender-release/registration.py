@@ -48,24 +48,35 @@ logger = get_logger(__name__)
 
 if not persistent:  # for fake-bpy-modules
 
-    def persistent(_func: Callable[[object], None]) -> Callable[[object], None]:
-        raise NotImplementedError
+    def persistent(func: Callable[[object], None]) -> Callable[[object], None]:
+        return func
 
 
 @persistent  # type: ignore[misc]
 def load_post(_dummy: object) -> None:
+    if (
+        depsgraph_update_pre_once_if_load_post_is_unavailable
+        in bpy.app.handlers.depsgraph_update_pre
+    ):
+        bpy.app.handlers.depsgraph_update_pre.remove(
+            depsgraph_update_pre_once_if_load_post_is_unavailable
+        )
+
     shader.add_shaders()
     migration.migrate_all_objects()
     migration.setup_subscription(load_post=True)
 
 
 @persistent  # type: ignore[misc]
-def depsgraph_update_pre_once(_dummy: object) -> None:
+def depsgraph_update_pre_once_if_load_post_is_unavailable(_dummy: object) -> None:
     # register時もload_postと同様の初期化を行いたい。しかし、registerに直接書くと
     # Blender起動直後のコンテキストではエラーになってしまう。そのためdepsgraph_update_preを使う。
-    if depsgraph_update_pre_once not in bpy.app.handlers.depsgraph_update_pre:
+    if (
+        depsgraph_update_pre_once_if_load_post_is_unavailable
+        not in bpy.app.handlers.depsgraph_update_pre
+    ):
         return
-    bpy.app.handlers.depsgraph_update_pre.remove(depsgraph_update_pre_once)
+
     shader.add_shaders()
     migration.migrate_all_objects()
     migration.setup_subscription(load_post=False)
@@ -79,7 +90,7 @@ def depsgraph_update_pre(_dummy: object) -> None:
 @persistent  # type: ignore[misc]
 def save_pre(_dummy: object) -> None:
     # 保存の際にtimersに登録したコールバックがもし起動しても内部データを変更しないようにする
-    depsgraph_update_pre_once(None)
+    depsgraph_update_pre_once_if_load_post_is_unavailable(None)
     migration.migrate_all_objects()
     extension.update_internal_cache(bpy.context)
 
@@ -265,6 +276,8 @@ classes = [
     spring_bone1_ops.VRM_OT_remove_spring_bone1_spring_collider_group,
     spring_bone1_ops.VRM_OT_add_spring_bone1_spring_joint,
     spring_bone1_ops.VRM_OT_remove_spring_bone1_spring_joint,
+    spring_bone1_ops.VRM_OT_reset_spring_bone1_animation_state,
+    spring_bone1_ops.VRM_OT_update_spring_bone1_animation,
     mtoon1_ops.VRM_OT_convert_material_to_mtoon1,
     mtoon1_ops.VRM_OT_convert_mtoon1_to_bsdf_principled,
     mtoon1_ops.VRM_OT_reset_mtoon1_material_shader_node_tree,
@@ -347,7 +360,9 @@ def register(init_addon_version: object) -> None:
     # bpy.types.VIEW3D_MT_mesh_add.append(panel.make_mesh)
 
     bpy.app.handlers.load_post.append(load_post)
-    bpy.app.handlers.depsgraph_update_pre.append(depsgraph_update_pre_once)
+    bpy.app.handlers.depsgraph_update_pre.append(
+        depsgraph_update_pre_once_if_load_post_is_unavailable
+    )
     bpy.app.handlers.depsgraph_update_pre.append(depsgraph_update_pre)
     bpy.app.handlers.depsgraph_update_pre.append(mtoon1_handler.depsgraph_update_pre)
     bpy.app.handlers.save_pre.append(save_pre)
@@ -371,8 +386,13 @@ def unregister() -> None:
     bpy.app.handlers.save_pre.remove(save_pre)
     bpy.app.handlers.depsgraph_update_pre.remove(mtoon1_handler.depsgraph_update_pre)
     bpy.app.handlers.depsgraph_update_pre.remove(depsgraph_update_pre)
-    if depsgraph_update_pre_once in bpy.app.handlers.depsgraph_update_pre:
-        bpy.app.handlers.depsgraph_update_pre.remove(depsgraph_update_pre_once)
+    if (
+        depsgraph_update_pre_once_if_load_post_is_unavailable
+        in bpy.app.handlers.depsgraph_update_pre
+    ):
+        bpy.app.handlers.depsgraph_update_pre.remove(
+            depsgraph_update_pre_once_if_load_post_is_unavailable
+        )
     bpy.app.handlers.load_post.remove(load_post)
 
     # bpy.types.VIEW3D_MT_mesh_add.remove(panel.make_mesh)

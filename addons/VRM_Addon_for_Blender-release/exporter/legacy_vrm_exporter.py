@@ -5,6 +5,7 @@ https://opensource.org/licenses/mit-license.php
 
 """
 
+import importlib
 import math
 import re
 import statistics
@@ -496,10 +497,13 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
             """transparent_method = {"OPAQUE","MASK","BLEND"}"""
             if base_color is None:
                 base_color = (1, 1, 1, 1)
+            base_color = tuple(map(lambda v: max(0, min(1, v)), base_color))
             if metalness is None:
                 metalness = 0
+            metalness = max(0, min(1, metalness))
             if roughness is None:
                 roughness = 0.9
+            roughness = max(0, min(1, roughness))
             if unlit is None:
                 unlit = True
             fallback_dict = {
@@ -841,9 +845,15 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
                 unlit = unlit_value > 0.5
             pbr_dict = pbr_fallback(
                 b_mat,
-                base_color=shader.get_rgba_value(gltf_shader_node, "base_Color"),
-                metalness=shader.get_float_value(gltf_shader_node, "metallic"),
-                roughness=shader.get_float_value(gltf_shader_node, "roughness"),
+                base_color=shader.get_rgba_value(
+                    gltf_shader_node, "base_Color", 0.0, 1.0
+                ),
+                metalness=shader.get_float_value(
+                    gltf_shader_node, "metallic", 0.0, 1.0
+                ),
+                roughness=shader.get_float_value(
+                    gltf_shader_node, "roughness", 0.0, 1.0
+                ),
                 base_color_texture=shader.get_image_name_and_sampler_type(
                     gltf_shader_node, "color_texture"
                 ),
@@ -868,7 +878,9 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
             pbr_tex_add("normalTexture", "normal")
             pbr_tex_add("emissiveTexture", "emissive_texture")
             pbr_tex_add("occlusionTexture", "occlusion_texture")
-            emissive_factor = shader.get_rgb_value(gltf_shader_node, "emissive_color")
+            emissive_factor = shader.get_rgb_value(
+                gltf_shader_node, "emissive_color", 0.0, 1.0
+            )
             if emissive_factor is None:
                 emissive_factor = (0, 0, 0)
             pbr_dict["emissiveFactor"] = list(emissive_factor)
@@ -1027,12 +1039,13 @@ class LegacyVrmExporter(AbstractBaseVrmExporter):
                 return fallback
 
             try:
-                from io_scene_gltf2.blender.exp.gltf2_blender_gather_materials import (
-                    gather_material,
-                )  # pyright: reportMissingImports=false
-            except ImportError:
+                gltf2_blender_gather_materials = importlib.import_module(
+                    "io_scene_gltf2.blender.exp.gltf2_blender_gather_materials"
+                )
+            except ModuleNotFoundError:
                 logger.exception("Failed to import glTF 2.0 Add-on")
                 return fallback
+            gather_material = gltf2_blender_gather_materials.gather_material
 
             gltf2_io_material: Optional[object] = None
             try:

@@ -9,6 +9,7 @@ import mathutils
 
 from ...common import shader
 from ...common.logging import get_logger
+from ...common.preferences import VrmAddonPreferences
 
 logger = get_logger(__name__)
 
@@ -82,7 +83,10 @@ class MaterialTraceablePropertyGroup(bpy.types.PropertyGroup):  # type: ignore[m
             return
         node = node_tree.nodes.get(node_name)
         if not isinstance(node, bpy.types.ShaderNodeValue):
-            logger.warning(f'No shader node value "{node_name}" for "{material.name}"')
+            if node_name != "Mtoon1Material.NormalScale":
+                logger.warning(
+                    f'No shader node value "{node_name}" for "{material.name}"'
+                )
             return
         node.outputs[0].default_value = value
 
@@ -1695,6 +1699,13 @@ class Mtoon1MaterialExtensionsPropertyGroup(bpy.types.PropertyGroup):  # type: i
 class Mtoon1MaterialPropertyGroup(MaterialTraceablePropertyGroup):
     material_property_chain: List[str] = []
 
+    INITIAL_ADDON_VERSION = VrmAddonPreferences.INITIAL_ADDON_VERSION
+
+    addon_version: bpy.props.IntVectorProperty(  # type: ignore[valid-type]
+        size=3,  # noqa: F722
+        default=INITIAL_ADDON_VERSION,
+    )
+
     pbr_metallic_roughness: bpy.props.PointerProperty(  # type: ignore[valid-type]
         type=Mtoon1PbrMetallicRoughnessPropertyGroup  # noqa: F722
     )
@@ -1922,7 +1933,8 @@ class Mtoon1MaterialPropertyGroup(MaterialTraceablePropertyGroup):
 def reset_shader_node_group(
     context: bpy.types.Context,
     material: bpy.types.Material,
-    reset_node_tree: bool = True,
+    reset_node_tree: bool,
+    overwrite: bool,
 ) -> None:
     root = material.vrm_addon_extension.mtoon1
     mtoon = root.extensions.vrmc_materials_mtoon
@@ -1969,9 +1981,9 @@ def reset_shader_node_group(
     uv_animation_rotation_speed_factor = mtoon.uv_animation_rotation_speed_factor
 
     if reset_node_tree:
-        shader.load_mtoon1_shader(context, material)
+        shader.load_mtoon1_shader(context, material, overwrite)
         if root.outline_material:
-            shader.load_mtoon1_shader(context, root.outline_material)
+            shader.load_mtoon1_shader(context, root.outline_material, overwrite)
 
     root.is_outline_material = False
     if root.outline_material:
@@ -2017,5 +2029,3 @@ def reset_shader_node_group(
     mtoon.uv_animation_scroll_x_speed_factor = uv_animation_scroll_x_speed_factor
     mtoon.uv_animation_scroll_y_speed_factor = uv_animation_scroll_y_speed_factor
     mtoon.uv_animation_rotation_speed_factor = uv_animation_rotation_speed_factor
-
-    bpy.ops.vrm.refresh_mtoon1_outline(material_name=material.name)

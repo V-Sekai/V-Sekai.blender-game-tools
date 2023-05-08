@@ -94,7 +94,7 @@ class EXPORT_SCENE_OT_vrm(bpy.types.Operator, ExportHelper):  # type: ignore[mis
     armature_object_name: bpy.props.StringProperty(  # type: ignore[valid-type]
         options={"HIDDEN"},  # noqa: F821
     )
-    ignore_skippable_warning: bpy.props.BoolProperty(  # type: ignore[valid-type]
+    ignore_warning: bpy.props.BoolProperty(  # type: ignore[valid-type]
         options={"HIDDEN"},  # noqa: F821
     )
 
@@ -229,7 +229,7 @@ class EXPORT_SCENE_OT_vrm(bpy.types.Operator, ExportHelper):  # type: ignore[mis
             self.errors,
             self.armature_object_name,
         )
-        if not self.ignore_skippable_warning and any(
+        if not self.ignore_warning and any(
             error.severity <= 1 for error in self.errors
         ):
             bpy.ops.wm.vrm_export_confirmation(
@@ -301,6 +301,7 @@ def menu_export(menu_op: bpy.types.Operator, _context: bpy.types.Context) -> Non
         EXPORT_SCENE_OT_vrm.bl_idname, text="VRM (.vrm)"
     )
     export_op.armature_object_name = ""
+    export_op.ignore_warning = False
 
 
 class WM_OT_vrm_export_human_bones_assignment(bpy.types.Operator):  # type: ignore[misc]
@@ -445,7 +446,7 @@ class WM_OT_vrm_export_confirmation(bpy.types.Operator):  # type: ignore[misc]
             return {"CANCELLED"}
         bpy.ops.export_scene.vrm(
             "INVOKE_DEFAULT",
-            ignore_skippable_warning=True,
+            ignore_warning=True,
             armature_object_name=self.armature_object_name,
         )
         return {"FINISHED"}

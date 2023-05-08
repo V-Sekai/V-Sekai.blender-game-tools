@@ -1,7 +1,10 @@
 import uuid
+from sys import float_info
 from typing import Set
 
 import bpy
+
+from .handler import reset_state, update_pose_bone_rotations
 
 
 class VRM_OT_add_spring_bone1_collider(bpy.types.Operator):  # type: ignore[misc]
@@ -310,6 +313,9 @@ class VRM_OT_add_spring_bone1_spring_joint(bpy.types.Operator):  # type: ignore[
         options={"HIDDEN"},  # noqa: F821
         min=0,
     )
+    guess_properties: bpy.props.BoolProperty(  # type: ignore[valid-type]
+        options={"HIDDEN"},  # noqa: F821
+    )
 
     def execute(self, _context: bpy.types.Context) -> Set[str]:
         armature = bpy.data.objects.get(self.armature_name)
@@ -318,7 +324,22 @@ class VRM_OT_add_spring_bone1_spring_joint(bpy.types.Operator):  # type: ignore[
         springs = armature.data.vrm_addon_extension.spring_bone1.springs
         if len(springs) <= self.spring_index:
             return {"CANCELLED"}
-        springs[self.spring_index].joints.add()
+        joints = springs[self.spring_index].joints
+        joints.add()
+        if not self.guess_properties:
+            return {"FINISHED"}
+
+        if len(joints) < 2:
+            return {"FINISHED"}
+        parent_joint, joint = joints[-2:]
+        parent_bone = armature.data.bones.get(parent_joint.node.value)
+        if parent_bone and parent_bone.children:
+            joint.node.value = parent_bone.children[0].name
+        joint.hit_radius = parent_joint.hit_radius
+        joint.stiffness = parent_joint.stiffness
+        joint.gravity_power = parent_joint.gravity_power
+        joint.gravity_dir = list(parent_joint.gravity_dir)
+        joint.drag_force = parent_joint.drag_force
         return {"FINISHED"}
 
 
@@ -351,4 +372,45 @@ class VRM_OT_remove_spring_bone1_spring_joint(bpy.types.Operator):  # type: igno
         if len(joints) <= self.joint_index:
             return {"CANCELLED"}
         joints.remove(self.joint_index)
+        return {"FINISHED"}
+
+
+class VRM_OT_reset_spring_bone1_animation_state(bpy.types.Operator):  # type: ignore[misc]
+    bl_idname = "vrm.reset_spring_bone1_animation_state"
+    bl_label = "Reset SpringBone Animation State"
+    bl_description = "Reset SpringBone Animation State"
+    bl_options = {"REGISTER", "UNDO"}
+
+    armature_name: bpy.props.StringProperty(  # type: ignore[valid-type]
+        options={"HIDDEN"},  # noqa: F821
+    )
+
+    def execute(self, _context: bpy.types.Context) -> Set[str]:
+        armature = bpy.data.objects.get(self.armature_name)
+        if armature is None or armature.type != "ARMATURE":
+            return {"CANCELLED"}
+        for spring in armature.data.vrm_addon_extension.spring_bone1.springs:
+            for joint in spring.joints:
+                joint.state.initialized_as_tail = False
+        reset_state()
+        return {"FINISHED"}
+
+
+class VRM_OT_update_spring_bone1_animation(bpy.types.Operator):  # type: ignore[misc]
+    bl_idname = "vrm.update_spring_bone1_animation"
+    bl_label = "Update SpringBone Animation"
+    bl_description = "Update SpringBone Animation"
+    bl_options = {"REGISTER", "UNDO"}
+
+    delta_time: bpy.props.FloatProperty(  # type: ignore[valid-type]
+        options={"HIDDEN"},  # noqa: F821
+    )
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        delta_time = self.delta_time
+        if abs(delta_time) < float_info.epsilon:
+            delta_time = float(context.scene.render.fps_base) / float(
+                context.scene.render.fps
+            )
+        update_pose_bone_rotations(delta_time)
         return {"FINISHED"}
