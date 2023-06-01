@@ -5,5 +5,3 @@ __pycache__/
 *.pyc
 
 addons/blenderkit/blenderkit_updater/blenderkit_updater_status.json
-
-addons/blender_dembones/fbx_files_changed
