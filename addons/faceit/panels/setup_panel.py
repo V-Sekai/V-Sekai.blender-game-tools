@@ -7,7 +7,7 @@ from ..core import vgroup_utils as vg_utils
 from . import draw_utils
 from .ui import FACEIT_PT_Base, FACEIT_PT_BaseSub
 
-from ..setup.assign_groups_operators import is_picker_runnging
+from ..setup.assign_groups_operators import is_picker_running
 
 
 class FACEIT_PT_BaseSetup(FACEIT_PT_Base):
@@ -116,7 +116,7 @@ def draw_assign_group_options(row, grp_name, grp_name_ui, can_pick=False):
     is_drawn = grp_prop.is_drawn
     if can_pick:
         row.operator('faceit.assign_main', text=grp_name_ui, icon='GROUP_VERTEX')
-        picker_running = is_picker_runnging()
+        picker_running = is_picker_running()
         row.operator('faceit.assign_main_modal', text='', icon='EYEDROPPER', depress=picker_running)
     else:
         row.operator('faceit.assign_group', text=grp_name_ui,
@@ -251,7 +251,7 @@ class FACEIT_PT_SetupVertexGroups(FACEIT_PT_BaseSetup, bpy.types.Panel):
                      icon='HIDE_OFF', depress=is_drawn).faceit_vertex_group_name = 'UNASSIGNED'
         col_utils.separator()
         row = col_utils.row(align=True)
-        op = row.operator('faceit.remove_all_faceit_groups', text='Reset All', icon='TRASH')
+        row.operator('faceit.remove_all_faceit_groups', text='Reset All', icon='TRASH')
 
 
 class FACE_OBJECTS_UL_list(bpy.types.UIList):
@@ -288,7 +288,8 @@ class FACEIT_MT_FaceitObjects(bpy.types.Menu):
         row = layout.row(align=True)
         op = row.operator('faceit.clear_faceit_objects', text='Clear all Registered Objects', icon='TRASH')
         row = layout.row(align=True)
-        op = row.operator('faceit.remove_faceit_groups', text='Reset All Vertex Groups', icon='TRASH')
+        row.operator('faceit.remove_all_faceit_groups', text='Reset All Vertex Groups', icon='TRASH')
+        # op = row.operator('faceit.remove_faceit_groups', text='Reset All Vertex Groups', icon='TRASH')
         op.all_groups = True
 
 

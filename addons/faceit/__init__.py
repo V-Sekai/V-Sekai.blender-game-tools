@@ -27,7 +27,7 @@ bl_info = {
     'author': 'Fynn Braren',
     'description': 'Facial Expressions And Performance Capture',
     'blender': (2, 80, 0),
-    'version': (2, 2, 4),
+    'version': (2, 2, 8),
     'location': 'View3D',
     'warning': '',
     'wiki_url': "https://faceit-doc.readthedocs.io/en/latest/",

@@ -499,22 +499,18 @@ class MocapImporterBase(FaceRegionsBaseProperties):
             self.report({'ERROR'}, 'Mocap File not set or invalid')
             return {'CANCELLED'}
         self.filename = self._get_clean_filename(self.engine_settings.filename)
-        faceit_objects = futils.get_faceit_objects_list()
-        if not faceit_objects:
-            self.report({'WARNING'}, "You need to register the character meshes in the setup tab.")
-            return {'CANCELLED'}
-        self.new_action_name = self.filename
-        audio_file = self.engine_settings.audio_filename
-        if audio_file:
-            self.audio_filename = self._get_clean_filename(audio_file)
-            self.can_load_audio = True
-            self.load_audio_file = True
         ctrl_rig = context.scene.faceit_control_armature
         if ctrl_rig and self.can_bake_control_rig:
             if ctrl_utils.is_control_rig_connected(ctrl_rig):
                 self.bake_to_control_rig = True
         else:
             self.can_bake_control_rig = False
+        self.new_action_name = self.filename
+        audio_file = self.engine_settings.audio_filename
+        if audio_file:
+            self.audio_filename = self._get_clean_filename(audio_file)
+            self.can_load_audio = True
+            self.load_audio_file = True
 
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
@@ -757,7 +753,7 @@ class MocapImporterBase(FaceRegionsBaseProperties):
                     {'WARNING'},
                     'No registered objects found. {}'.format(
                         'Please update the control rig'
-                        if self.bake_to_control_rig else 'Please register objects in Setup panel'))
+                        if self.bake_to_control_rig else 'Please register objects in Setup panel in order to animate shape keys.'))
                 futils.restore_scene_state(context, state_dict)
                 return {'CANCELLED'}
 

@@ -6,7 +6,7 @@ from ..landmarks import landmarks_data as lm_data
 from . import draw_utils
 from .ui import FACEIT_PT_Base, FACEIT_PT_BaseSub
 
-from ..setup.assign_groups_operators import is_picker_runnging
+from ..setup.assign_groups_operators import is_picker_running
 
 
 class FACEIT_PT_BaseRig(FACEIT_PT_Base):
@@ -81,7 +81,7 @@ class FACEIT_PT_Landmarks(FACEIT_PT_BaseRig, bpy.types.Panel):
             if scene.faceit_workspace.active_tab == 'CONTROL':
                 row.label(text="Helpers")
                 row = col.row(align=True)
-                picker_running = is_picker_runnging()
+                picker_running = is_picker_running()
                 row.operator('faceit.assign_main_modal', text='Set Main Group',
                              icon='EYEDROPPER', depress=picker_running)
                 if main_obj:

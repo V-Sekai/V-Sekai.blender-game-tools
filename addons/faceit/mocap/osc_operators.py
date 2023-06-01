@@ -5,7 +5,7 @@ from .mocap_importers import OSCLiveAnimator
 from .osc_receiver import QueueManager, Receiver, osc_queue
 from ..core.faceit_utils import get_faceit_objects_list, restore_scene_state, save_scene_state, ui_refresh_all, get_faceit_control_armature, set_active_object, get_object_mode_from_context_mode, clear_active_object, set_hide_obj
 from ..core.pose_utils import get_edit_bone_roll
-from ..ctrl_rig.control_rig_utils import is_control_rig_connected
+from ..ctrl_rig.control_rig_utils import get_crig_objects_list, is_control_rig_connected
 
 queue_mgr: QueueManager = QueueManager()
 receiver: Receiver = Receiver(queue_mgr)
@@ -44,15 +44,26 @@ class FACEIT_OT_ReceiverStart(bpy.types.Operator):
         live_animator.animate_head_location = animate_loc
         live_animator.animate_head_rotation = animate_rot
         if animate_shapes:
-            objects = get_faceit_objects_list()
-            target_shapes = scene.faceit_arkit_retarget_shapes
-            if not objects:
-                self.report({'WARNING'}, "You need to register the target objects in Setup tab.")
-            elif not target_shapes:
-                self.report({'WARNING'}, "You need to populate the ARKit target shapes list in the Shapes tab.")
-
             live_animator.set_use_region_filter(scene.faceit_osc_use_region_filter)
             live_animator.set_face_regions_dict(scene.faceit_osc_face_regions.get_active_regions())
+            # Get objects and target shapes
+            ctrl_rig = scene.faceit_control_armature
+            reconnect_ctrl_rig = False
+            if ctrl_rig:
+                if is_control_rig_connected(ctrl_rig):
+                    if scene.faceit_auto_disconnect_ctrl_rig:
+                        objects = get_crig_objects_list(ctrl_rig)
+                        target_shapes = ctrl_rig.faceit_crig_targets
+                        bpy.ops.faceit.remove_control_drivers('EXEC_DEFAULT')
+                        reconnect_ctrl_rig = True
+            if reconnect_ctrl_rig is False:
+                objects = get_faceit_objects_list()
+                target_shapes = scene.faceit_arkit_retarget_shapes
+                if not objects:
+                    self.report({'WARNING'}, "You need to register the target objects in Setup tab or select a valid control rig.")
+                elif not target_shapes:
+                    self.report({'WARNING'}, "You need to populate the ARKit target shapes list in the Shapes tab or select a valid control rig.")
+
             live_animator.set_shape_targets(
                 objects=objects,
                 retarget_shapes=target_shapes
@@ -91,11 +102,6 @@ class FACEIT_OT_ReceiverStart(bpy.types.Operator):
             )
         if bpy.context.screen.is_animation_playing:
             bpy.ops.screen.animation_cancel()
-        ctrl_rig = scene.faceit_control_armature
-        if ctrl_rig:
-            if scene.faceit_auto_disconnect_ctrl_rig and is_control_rig_connected(ctrl_rig):
-                bpy.ops.faceit.remove_control_drivers('EXEC_DEFAULT')
-                reconnect_ctrl_rig = True
         try:
             receiver.start(scene.faceit_osc_address, scene.faceit_osc_port)
         except OSError as e:
@@ -150,7 +156,6 @@ class FACEIT_OT_ReceiverStop(bpy.types.Operator):
         if ctrl_rig:
             if context.scene.faceit_auto_disconnect_ctrl_rig and reconnect_ctrl_rig:
                 bpy.ops.faceit.setup_control_drivers('EXEC_DEFAULT')
-        reconnect_ctrl_rig = False
         return {'FINISHED'}
 
 

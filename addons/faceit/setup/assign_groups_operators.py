@@ -17,7 +17,7 @@ import numpy as np
 picker_running = False
 
 
-def is_picker_runnging():
+def is_picker_running():
     global picker_running
     return picker_running
 
