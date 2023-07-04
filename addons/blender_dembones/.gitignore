@@ -1,8 +1,0 @@
-non-public/
-.gitkeep
-*.pyc
-
-intermediate_files/*
-log/*
-!intermediate_files/.gitkeep
-!log/.gitkeep

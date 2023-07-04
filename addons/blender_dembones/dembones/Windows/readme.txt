@@ -1,1 +1,0 @@
-This pre-compiled tool requires Microsoft Visual C++ 2015 - 2019 Redistributable.

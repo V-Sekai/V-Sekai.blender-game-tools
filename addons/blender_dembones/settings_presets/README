@@ -1,1 +1,0 @@
-This folder contains default presets. They will be copied to Blender's presets folder of this add-on on every add-on load and Blender start-up. Do not change default presets if possible. If you want to add new presets or remove existing ones, please use the add-on UI in Blender directly.
