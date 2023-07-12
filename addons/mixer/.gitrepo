@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/mixer.git
+	branch = master
+	commit = 3fc38e24f682701a29ec69e2040eef5d1dfaea17
+	parent = 9cedd4a5671fdcfae581f1cbb02d9175a9079153
+	method = merge
+	cmdver = 0.4.6
