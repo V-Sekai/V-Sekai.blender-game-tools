@@ -17,7 +17,6 @@ The server stores attributes for each client, represented as a json object. Some
 The name of attributes are defined in the class `ClientAttributes` of [common.py](../mixer/broadcaster/common.py).
 
 Server attributes (always filled by server):
-
 - ID: unique id for the client (string)
 - IP: IP of the client (string)
 - PORT: port of the client on server side (integer)
@@ -26,7 +25,6 @@ Server attributes (always filled by server):
 Note: The ID is stored even if is built from the IP and port. This is to allow future change of the identification strategy. As a consequence, client code should not assume this construction of the ID and should use IP and PORT attributes if they want access to these information.
 
 Standard custom attributes:
-
 - USERNAME: name of the client, non unique (string)
 - USERCOLOR: color of the client (list of 3 floats)
 - USERSCENES: dictionary of json objects describing client attributes related to each 3D scene, when it makes sense for the client. The key is a scene name, and objects have the following shape:
@@ -99,7 +97,6 @@ The server stores attributes for each room, represented as a json object. Some a
 The name of attributes are defined in the class `RoomAttributes` of [common.py](../mixer/broadcaster/common.py).
 
 Server attributes (always filled by server):
-
 - NAME: unique name of the room (non empty string)
 - KEEP_OPEN: indicate if the room should be kept on the server when no more client is inside (boolean)
 - COMMAND_COUNT: number of commands stored in the room list (integer)
@@ -118,12 +115,12 @@ All codes are defined in [common.py](../mixer/broadcaster/common.py).
 
 A known limitation of this system is that it is hard to keep clients code other than the Blender addon synchronized with server code changes. We plan to address this issue in the near future.
 
+
 ## Mixer Protocol
 
 This section describes the communication protocol between server and clients for each Mixer message type.
 
 Here are rules we want this protocol to respect:
-
 - The server notify all clients of any change about client attributes or rooms attributes
 - The clients get notified only if a change occurs
 - The clients are responsible to update their own data according to changes: they only receive differentials
@@ -133,11 +130,9 @@ Here are rules we want this protocol to respect:
 ### JOIN_ROOM
 
 Data:
-
 - room_name (str)
 
 Protocol:
-
 - Client send `JOIN_ROOM room_name` to Server
 - If Client is already joined to a room:
   - Server send `SEND_ERROR` to Client
@@ -157,11 +152,9 @@ Protocol:
 ### LEAVE_ROOM
 
 Data:
-
 - room_name (str) (Deprecrated, will be removed)
 
 Protocol:
-
 - Client send `LEAVE_ROOM room_name` to Server
 - If the client is not in a room
   - Server send `SEND_ERROR` to Client
@@ -177,7 +170,6 @@ Protocol:
 Data: None
 
 Protocol:
-
 - Client send `LIST_ROOMS` to Server
 - Server send `LIST_ROOMS all_rooms_attributes` to Client, where `all_rooms_attributes` is a json object where keys are room names and values are rooms attributes.
 
@@ -186,7 +178,6 @@ Protocol:
 Data: None
 
 Protocol:
-
 - Occurs after a `JOIN_ROOM` from Client to Server when the room does not exist
 - Server send `CONTENT` to Client
 - Client send a list of room commands
@@ -197,7 +188,6 @@ Protocol:
 Data: None
 
 Protocol:
-
 - Occurs after a `JOIN_ROOM` from Client to Server when the room exists
 - Server send `CLEAR_CONTENT` to Client
 - Client is supposed to clear its data, but can do what he wants
@@ -205,11 +195,9 @@ Protocol:
 ### DELETE_ROOM
 
 Data:
-
 - room_name (str)
 
 Protocol:
-
 - Client send `DELETE_ROOM` to Server
 - If the room does not exist:
   - Server send `SEND_ERROR` to Client
@@ -226,11 +214,9 @@ Deprecated, equivalent to `SET_CLIENT_CUSTOM_ATTRIBUTES` with `USERNAME` custom 
 ### SEND_ERROR
 
 Data:
-
 - error_message (str)
 
 Protocol:
-
 - Occurs when an operation cannot be performed
 - Server send `SEND_ERROR error_message` to Client
 
@@ -239,31 +225,27 @@ Protocol:
 Data: None
 
 Protocol:
-
 - Client send `LIST_CLIENTS` to Server
 - Server send `LIST_CLIENTS all_clients_attributes` to Client, where `all_clients_attributes` is a json object where keys are client unique ids and values are clients attributes.
 
 ### SET_CLIENT_CUSTOM_ATTRIBUTES
 
 Data:
-
 - update_object (json object, with attributes to set)
 
 Protocol:
-
 - Client send `SET_CLIENT_CUSTOM_ATTRIBUTES update_object` to Server
 - Server updates Client attributes
 - If a change is detected, Server broadcasts `CLIENT_UPDATE` to all Clients (only detected changes)
 
 ### SET_ROOM_CUSTOM_ATTRIBUTES
 
-Data:
 
+Data:
 - room_name (str)
 - update_object (json object, with attributes to set)
 
 Protocol:
-
 - Client send `SET_ROOM_CUSTOM_ATTRIBUTES room_name update_object` to Server
 - If room does not exist:
   - Server send `SEND_ERROR` to Client
@@ -274,12 +256,10 @@ Protocol:
 ### SET_ROOM_KEEP_OPEN
 
 Data:
-
 - room_name (str)
 - value (boolean)
 
 Protocol:
-
 - Client send `SET_ROOM_KEEP_OPEN room_name value` to Server
 - If room does not exist:
   - Server send `SEND_ERROR` to Client
@@ -292,22 +272,18 @@ Protocol:
 Data from Client to Server: None
 
 Data from Server to Client:
-
 - client_id (str)
 
 Protocol:
-
 - Client send `CLIENT_ID` to Server
 - Server send `CLIENT_ID client_id` to Client, where `client_id` is the unique id of Client
 
 ### CLIENT_UPDATE
 
 Data:
-
 - updates (dict where keys are client unique ids and values are client attributes updates)
 
 Protocol:
-
 - Occurs after some operations produce one or several client updates
 - Server broadcasts `CLIENT_UPDATE updates` to all clients
 
@@ -316,11 +292,9 @@ Note: The Server is free to send updates when it wants after the change occured.
 ### ROOM_UPDATE
 
 Data:
-
 - updates (dict where keys are room names and values are room attributes updates)
 
 Protocol:
-
 - Occurs after some operations produce one or several room updates
 - Server broadcasts `ROOM_UPDATE updates` to all clients
 
@@ -329,21 +303,17 @@ Note: The Server is free to send updates when it wants after the change occured.
 ### ROOM_DELETED
 
 Data:
-
 - room_name (str)
 
 Protocol:
-
 - Occurs after a room has been deleted
 - Server broadcasts `ROOM_DELETED room_name` to all clients
 
 ### CLIENT_DISCONNECTED
 
 Data:
-
 - client_id (str)
 
 Protocol:
-
 - Occurs after a client has been disconnected
 - Server broadcasts `CLIENT_DISCONNECTED client_id` to all clients

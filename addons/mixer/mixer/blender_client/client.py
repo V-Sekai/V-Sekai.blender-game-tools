@@ -258,7 +258,11 @@ class BlenderClient(Client):
         if old_object is not None:
             share_data.blender_objects.get(old_name).name = new_name
         else:
-            logger.info(f"build_rename(): old object {old_name} not found. Safe in generic mode")
+            if not share_data.use_vrtist_protocol():
+                # Renamed by the Blender Protocol
+                logger.info(f"build_rename(): old object {old_name} not found. Safe in generic mode")
+            else:
+                logger.info(f"build_rename(): old object {old_name} not found.")
 
         share_data.blender_objects_dirty = True
         share_data.old_objects = share_data.blender_objects
@@ -577,9 +581,17 @@ class BlenderClient(Client):
     def send_mesh(self, obj):
         logger.info("send_mesh %s", obj.name_full)
         mesh = obj.data
-        # see build_mesh_generic()
-        path = ensure_uuid(mesh)
-        mesh_name = mesh.name
+        if not share_data.use_vrtist_protocol():
+            # see build_mesh_generic()
+            path = ensure_uuid(mesh)
+            mesh_name = mesh.name
+        else:
+            path = self.get_object_path(obj)
+            mesh_name = self.get_mesh_name(mesh)
+
+            # objects may share mesh but baked mesh may be different in instances with different modifiers
+            if len(obj.modifiers) > 0:
+                mesh_name = obj.name_full + "_" + mesh_name
 
         binary_buffer = common.encode_string(path) + common.encode_string(mesh_name)
 
@@ -1283,7 +1295,16 @@ def send_scene_content():
         share_data.client.send_group_begin()
 
         timer = time.monotonic()
-        generic.send_scene_data_to_server(None, None)
+        if not share_data.use_vrtist_protocol():
+            generic.send_scene_data_to_server(None, None)
+        else:
+            share_data.client.send_set_current_scene(bpy.context.scene.name_full)
+            # Temporary waiting for material sync. Should move to send_scene_data_to_server
+            for material in bpy.data.materials:
+                share_data.client.send_material(material)
+            send_scene_data_to_server(None, None)
+            # Temporary send initial animations
+            share_data.client.send_animations()
 
         elapse = time.monotonic() - timer
         logger.warning(f"Scene data send in {elapse:.1f} seconds")

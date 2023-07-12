@@ -96,9 +96,9 @@
 
 - UI: display user name on a single item when a collection is selected
 - Room join: fix impossible join because of incompatible VRtist protocol setting
-  ([#15](https://gitlab.com/ubisoft-animation-studio/mixer/-/issues/15))
+([#15](https://gitlab.com/ubisoft-animation-studio/mixer/-/issues/15))
 - Mesh: fix crash when receiving a mesh in a mixed Linux/windows room
-  ([#17](https://gitlab.com/ubisoft-animation-studio/mixer/-/issues/17))
+([#17](https://gitlab.com/ubisoft-animation-studio/mixer/-/issues/17))
 - Material: fix synchronization failure after removing a shading node
 - Material: fix a crash after receiving a Material node_tree update
 - LayerCollection: fix synchronization failure
@@ -126,6 +126,7 @@
 - Metaballs: error messages
 - Material assignment: synchronization with multiple materials
 - Logging: more focused messages in warning mode
+
 
 # 0.18.0 (2020-11-18)
 
@@ -162,6 +163,7 @@
 - Logging: add exception type when logging an exception.
 - Logging: add information about Blender version, Mixer version and loaded addons.
 - Code health: remove stats module
+
 
 # 0.17.0 (2020-10-15)
 
@@ -202,6 +204,7 @@
 ## Refactor
 
 - Split blender_data/proxy.py into multiple files
+
 
 # 0.16.1 (2020-09-22)
 

@@ -119,9 +119,6 @@ class SoaElement(Proxy):
         self._member_name = member_name
 
     def array_attr(self, aos: T.bpy_prop_collection, bl_rna: T.bpy_struct) -> Tuple[int, type]:
-        if not aos:
-            return 0, None
-
         prototype_item = getattr(aos[0], self._member_name)
         member_type = type(prototype_item)
 
@@ -151,13 +148,9 @@ class SoaElement(Proxy):
         else:
             array_size, member_type = self.array_attr(aos, bl_rna)
             typecode = soa_initializers[member_type].typecode
-            if member_type == bpy.types.bpy_prop_array:
-                typecode = bpy.types.bpy_prop_array
-                self._array = [0.0] * array_size
-            else:
-                buffer = self._array
-                if buffer is None or buffer.buffer_info()[1] != array_size or buffer.typecode != typecode:
-                    self._array = soa_initializer(member_type, array_size)
+            buffer = self._array
+            if buffer is None or buffer.buffer_info()[1] != array_size or buffer.typecode != typecode:
+                self._array = soa_initializer(member_type, array_size)
 
             # if foreach_get() raises "RuntimeError: internal error setting the array"
             # it means that the array is ill-formed.

@@ -60,17 +60,6 @@ def _read_builtin(attr):
     raise _NotBuiltin
 
 
-def safe_getattr(object, name, default=None):
-    """
-    A safe version of getattr.
-    Returns `default` instead of raising an `AttributeError` when an attribute doesn't exist.
-    """
-    try:
-        return getattr(object, name)
-    except AttributeError:
-        return default
-
-
 def read_attribute(attr: Any, key: Union[int, str], attr_property: T.Property, parent: T.bpy_struct, context: Context):
     """
     Load a property into a python object of the appropriate type, be it a Proxy or a native python object
@@ -162,32 +151,13 @@ def read_attribute(attr: Any, key: Union[int, str], attr_property: T.Property, p
 
 
 def get_attribute_value(parent, key):
-    target = None
-
     if isinstance(key, int):
-        try:
-            target = parent[key]
-        except IndexError:
-            print(f"IndexError: No item at position {key} in the parent.")
-    
+        target = parent[key]
     elif isinstance(parent, T.bpy_prop_collection):
-        try:
-            target = next((item for item in parent if item.name == key), None)
-        except AttributeError:
-            print(f"AttributeError: No attribute with name {key} found in parent.")
-        
+        target = parent.get(key)
     else:
-        target = safe_getattr(parent, key, None)
-
+        target = getattr(parent, key, None)
     return target
-
-def safe_setattr(parent, key, value):
-    try:
-        setattr(parent, key, value)
-    except AttributeError as e:
-        print(f"Cannot set {key} to {value}. The attribute may be read-only.")
-    except Exception as e:
-        print(f"An error occurred while setting {key} to {value}: {e}")
 
 
 def write_attribute(
@@ -227,20 +197,18 @@ def write_attribute(
                 # Don't log this, too many messages
                 # f"Attempt to write to non-existent attribute {bl_instance}.{key} : skipped"
                 return
-            if prop.is_readonly:
-                return
-            if prop.name == "Active Paint Texture Index":
-                return
-            try:
-                safe_setattr(parent, key, value)
-            except TypeError as e:
-                if value != "":
-                    # common for enum that have unsupported default values, such as FFmpegSettings.ffmpeg_preset,
-                    # which seems initialized at "" and triggers :
-                    #   TypeError('bpy_struct: item.attr = val: enum "" not found in (\'BEST\', \'GOOD\', \'REALTIME\')')
-                    logger.warning("write_attribute: exception for ...")
-                    logger.warning(f"... attribute: {context.visit_state.display_path()}.{key}, value: {value}")
-                    logger.warning(f" ...{e!r}")
+
+            if not prop.is_readonly:
+                try:
+                    setattr(parent, key, value)
+                except TypeError as e:
+                    if value != "":
+                        # common for enum that have unsupported default values, such as FFmpegSettings.ffmpeg_preset,
+                        # which seems initialized at "" and triggers :
+                        #   TypeError('bpy_struct: item.attr = val: enum "" not found in (\'BEST\', \'GOOD\', \'REALTIME\')')
+                        logger.warning("write_attribute: exception for ...")
+                        logger.warning(f"... attribute: {context.visit_state.display_path()}.{key}, value: {value}")
+                        logger.warning(f" ...{e!r}")
 
     except (IndexError, AttributeError) as e:
         if (
@@ -307,7 +275,7 @@ def apply_attribute(
                     parent[key] = delta_value
                 else:
                     try:
-                        safe_setattr(parent, key, delta_value)
+                        setattr(parent, key, delta_value)
                     except AttributeError as e:
                         # most likely an addon (runtime) attribute that exists on the sender but no on this
                         # receiver or a readonly attribute that should be filtered out

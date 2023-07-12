@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 class Socket:
     """Simple wrapper around a socket to simulate bandwidth limitation
+
+    Would be obsoleted by twisted
+    (https://stackoverflow.com/questions/13047458/bandwidth-throttling-using-twisted/13647506)
     """
 
     def __init__(self, sock: socket.socket):

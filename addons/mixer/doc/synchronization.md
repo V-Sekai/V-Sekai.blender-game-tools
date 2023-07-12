@@ -34,16 +34,15 @@ There is currently no way for the user to control what can be synchronized.
 Subclasses of `Proxy` handles `bpy.data` synchronization in a very generic way, but type-specific adjustments are needed, for instance because factory methods for collection elements differ according to the element type. All these type-specific code is in `specifics.py`.
 
 #### How to synchronize a new datablock collection?
-
 Add a new `bpy.data collection` and datablock type to the synchronization in `filter.py` and test the synchronization during datablock creation and modification with log in info or debug mode.
 
 There are several causes for failures :
-
 - a property cannot be written, for instance because it is a computed property. Filter it out in `filter.py`.
 - an exception occurs that is caused by a call to a `specifics.py` function that does not handle the type being synchronized. In this case, add type specific code to the faulty function.
 - a stack overflow is caused by circular references, like when `Parent.child` and `Child.parent` reference each other. In this case, you need to identify the authoritative field and filter out the other one in `filter.py`.
 - this new type might require a generic scheme that has not yet been discovered with supported types, for instance a collection with float keys, or worse ...
 - the data structure is more complex and requires type specific proxies like in `node_proxy.py`
+
 
 ### The synchronization process
 
@@ -60,3 +59,4 @@ The messages are received by the server that broadcasts them to the users that a
 ### Known restrictions
 
 - Undo redo is not supported and may break the synchronization
+

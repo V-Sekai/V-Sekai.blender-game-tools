@@ -47,7 +47,32 @@ def build_collection(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning("build_collection %s, ignored in generic mode", name_full)
+    if not share_data.use_vrtist_protocol():
+        logger.warning("build_collection %s, ignored in generic mode", name_full)
+        return
+
+    # Blender/Blender in VRtist (non generic) mode
+    visible, index = common.decode_bool(data, index)
+    hide_viewport = not visible
+    offset, index = common.decode_vector3(data, index)
+    temporary_visibility, index = common.decode_bool(data, index)
+
+    logger.info("build_collection %s", name_full)
+    collection = share_data.blender_collections.get(name_full)
+    if collection is None:
+        collection = bpy.data.collections.new(name_full)
+        share_data.blender_collections[name_full] = collection
+
+    collection.hide_viewport = hide_viewport
+    collection.instance_offset = offset
+
+    layer_collection = share_data.blender_layer_collections.get(name_full)
+    if layer_collection:
+        layer_collection.hide_viewport = not temporary_visibility
+    else:
+        # if the layer collection does not exists, store its state for later
+        share_data.blender_collection_temporary_visibility[name_full] = temporary_visibility
+
 
 def send_collection_removed(client: Client, collection_name):
     logger.info("send_collection_removed %s", collection_name)
@@ -60,7 +85,21 @@ def build_collection_removed(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning("build_collection_remove %s, ignore in generic mode", name_full)
+    if not share_data.use_vrtist_protocol():
+        logger.warning("build_collection_remove %s, ignore in generic mode", name_full)
+        return
+
+    # Blender/Blender in VRtist (non generic) mode
+    logger.info("build_collectionRemove %s", name_full)
+    collection = share_data.blender_collections.get(name_full)
+    if collection:
+        # otherwise already removed by Blender protocol
+        try:
+            del share_data.blender_collections[name_full]
+            bpy.data.collections.remove(collection)
+        except Exception as e:
+            logger.info("build_remove_collection_from_scene: exception during unlink... ")
+            logger.info(f"... {e!r} ")
 
 
 def send_add_collection_to_collection(client: Client, parent_collection_name, collection_name):
@@ -76,7 +115,28 @@ def build_collection_to_collection(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning("build_collection_to_collection %s <- %s, ignore in generic mode", parent_name, child_name)
+    if not share_data.use_vrtist_protocol():
+        logger.warning("build_collection_to_collection %s <- %s, ignore in generic mode", parent_name, child_name)
+        return
+
+    logger.info("build_collection_to_collection %s <- %s", parent_name, child_name)
+    parent = share_data.blender_collections[parent_name]
+
+    child = share_data.blender_collections[child_name]
+
+    try:
+        parent.children.link(child)
+    except RuntimeError as e:
+        if not share_data.use_vrtist_protocol():
+            # Added by the Blender Protocol
+            logger.info(f"build_collection_to_collection(): parent {parent_name}, child {child_name}...")
+            logger.info("... Exception during parent.children.link() ...")
+            logger.info("... Safe in generic mode ...")
+            logger.info(f"... {e!r}")
+        else:
+            logger.warning(f"build_collection_to_collection(): parent {parent_name}, child {child_name}...")
+            logger.warning("... Exception during parent.children.link() ...")
+            logger.warning(f"... {e!r}")
 
 
 def send_remove_collection_from_collection(client: Client, parent_collection_name, collection_name):
@@ -92,9 +152,17 @@ def build_remove_collection_from_collection(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning(
-        "build_remove_collection_from_collection %s <- %s, ignore in generic mode", parent_name, child_name
-    )
+    if not share_data.use_vrtist_protocol():
+        logger.warning(
+            "build_remove_collection_from_collection %s <- %s, ignore in generic mode", parent_name, child_name
+        )
+        return
+
+    logger.info("build_remove_collection_from_collection %s <- %s", parent_name, child_name)
+
+    parent = share_data.blender_collections[parent_name]
+    child = share_data.blender_collections[child_name]
+    parent.children.unlink(child)
 
 
 def send_add_object_to_collection(client: Client, collection_name, obj_name):
@@ -109,7 +177,18 @@ def build_add_object_to_collection(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning("build_add_object_to_collection %s <- %s, ignore in generic mode", collection_name, object_name)
+    if not share_data.use_vrtist_protocol():
+        logger.warning("build_add_object_to_collection %s <- %s, ignore in generic mode", collection_name, object_name)
+        return
+    logger.info("build_add_object_to_collection %s <- %s", collection_name, object_name)
+
+    collection = share_data.blender_collections[collection_name]
+
+    # We may have received an object creation message before this collection link message
+    # and object creation will have created and linked the collection if needed
+    if collection.objects.get(object_name) is None:
+        object_ = share_data.blender_objects[object_name]
+        collection.objects.link(object_)
 
 
 def send_remove_object_from_collection(client: Client, collection_name, obj_name):
@@ -124,9 +203,23 @@ def build_remove_object_from_collection(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning(
-        "build_remove_object_from_collection %s <- %s, ignore in generic mode", collection_name, object_name
-    )
+    if not share_data.use_vrtist_protocol():
+        logger.warning(
+            "build_remove_object_from_collection %s <- %s, ignore in generic mode", collection_name, object_name
+        )
+        return
+
+    logger.info("build_remove_object_from_collection %s <- %s", collection_name, object_name)
+
+    collection = share_data.blender_collections[collection_name]
+    object_ = share_data.blender_objects.get(object_name)
+    if object_:
+        # otherwise already removed by Blender protocol
+        try:
+            collection.objects.unlink(object_)
+        except Exception as e:
+            logger.info("build_remove_object_from_collection: exception during unlink... ")
+            logger.info(f"... {e!r} ")
 
 
 def send_collection_instance(client: Client, obj):
@@ -144,5 +237,16 @@ def build_collection_instance(data):
 
     # This message is not emitted by VRtist, only by Blender, so it is used only for Blender/Blender sync.
     # In generic mode, it conflicts with generic messages, so drop it
-    logger.warning("build_collection_instance %s <- %s, ignore in generic mode", instantiated_name, instance_name)
+    if not share_data.use_vrtist_protocol():
+        logger.warning("build_collection_instance %s <- %s, ignore in generic mode", instantiated_name, instance_name)
+        return
 
+    logger.info("build_collection_instance %s from %s", instantiated_name, instance_name)
+
+    instantiated = share_data.blender_collections[instantiated_name]
+
+    instance = bpy.data.objects.new(name=instance_name, object_data=None)
+    instance.instance_collection = instantiated
+    instance.instance_type = "COLLECTION"
+
+    share_data.blender_objects[instance_name] = instance

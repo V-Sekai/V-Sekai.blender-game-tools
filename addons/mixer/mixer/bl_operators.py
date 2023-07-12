@@ -152,7 +152,7 @@ class CreateRoomOperator(bpy.types.Operator):
         shared_folders = []
         for item in mixer_prefs.shared_folders:
             shared_folders.append(item.shared_folder)
-        create_room(room, False, shared_folders, mixer_prefs.ignore_version_check)
+        create_room(room, mixer_prefs.vrtist_protocol, shared_folders, mixer_prefs.ignore_version_check)
 
         return {"FINISHED"}
 

@@ -128,7 +128,7 @@ class RoomItem(bpy.types.PropertyGroup):
     keep_open: bpy.props.BoolProperty(
         name="Keep Open",
         description="Indicate if the room should be kept on the server when no more client is inside",
-        default=True,
+        default=False,
         get=is_kept_open,
         set=on_keep_open_changed,
     )

@@ -15,16 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import logging
-from mixer.blender_client.misc import get_object_path
-from mixer.broadcaster import common
-from mixer.broadcaster.client import Client
+"""
+Definition of messages
 
-logger = logging.getLogger(__name__)
+Currently used only in tests. Could be used also in all send_xxx() and build_xxx() functions
+"""
+from dataclasses import dataclass
+
+from mixer.codec import Message, Color, Matrix
 
 
-def send_empty(client: Client, obj):
-    path = get_object_path(obj)
-    buffer = common.encode_string(path)
-    if buffer:
-        client.add_command(common.Command(common.MessageType.EMPTY, buffer, 0))
+@dataclass(order=True)
+class TransformMessage(Message):
+    path: str
+    m1: Matrix
+    m2: Matrix
+    m3: Matrix
+
+
+@dataclass(order=True)
+class LightMessage(Message):
+    path: str
+    name: str
+    type_: int
+    shadow: int
+    color: Color
+    energy: float
+    spot_size: float
+    spot_blend: float

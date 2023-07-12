@@ -187,7 +187,7 @@ def encode_baked_mesh(obj):
         material_indices = []
     else:
         material_indices = array.array("i", (0,)) * len(mesh.polygons)
-        material_indices = array.array("i", [poly.material_index for poly in mesh.polygons])
+        mesh.polygons.foreach_get("material_index", material_indices)
 
     if obj.type != "MESH":
         obj.to_mesh_clear()
@@ -195,7 +195,7 @@ def encode_baked_mesh(obj):
         original_bm.to_mesh(mesh)
         original_bm.free()
 
-    # Vertices count + binary vertices buffer
+    # Vericex count + binary vertices buffer
     size = len(vertices) // 3
     binary_vertices_buffer = common.int_to_bytes(size, 4) + struct.pack(f"{len(vertices)}f", *vertices)
 
@@ -207,13 +207,13 @@ def encode_baked_mesh(obj):
     size = len(uvs) // 2
     binary_uvs_buffer = common.int_to_bytes(size, 4) + struct.pack(f"{len(uvs)}f", *uvs)
 
-    # Material indices + binary material indices buffer
+    # material indices + binary material indices buffer
     size = len(material_indices)
     binary_material_indices_buffer = common.int_to_bytes(size, 4) + struct.pack(
         f"{len(material_indices)}I", *material_indices
     )
 
-    # Triangle indices count + binary triangle indices buffer
+    # triangle indices count + binary triangle indices buffer
     size = len(indices) // 3
     binary_indices_buffer = common.int_to_bytes(size, 4) + struct.pack(f"{len(indices)}I", *indices)
 
@@ -444,7 +444,7 @@ def decode_baked_mesh(obj: Optional[bpy.types.Object], data, index):
 
         uv_layer = None
         if len(uvs) > 0:
-            uv_layer = bm.loops.uv_layer.uv.new()
+            uv_layer = bm.loops.layers.uv.new()
 
         multi_material = False
         if len(material_indices) > 1:
