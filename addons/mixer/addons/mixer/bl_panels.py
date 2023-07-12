@@ -36,7 +36,6 @@ from mixer.blender_data.debug_addon import DebugDataPanel, use_debug_addon
 from mixer import display_version
 from mixer import icons
 from mixer.local_data import get_data_directory
-from mixer.vrtist import icons as vrtist_icons
 
 if TYPE_CHECKING:
     from mixer.bl_preferences import MixerPreferences
@@ -296,7 +295,6 @@ def draw_advanced_settings_ui(layout: bpy.types.UILayout):
         box.prop(mixer_prefs, "ignore_version_check")
         box.prop(mixer_prefs, "log_level")
         box.prop(mixer_prefs, "show_server_console")
-        box.prop(mixer_prefs, "vrtist_protocol")
 
 
 def draw_developer_settings_ui(layout: bpy.types.UILayout):
@@ -421,7 +419,6 @@ class MixerSettingsPanel(bpy.types.Panel):
         mixer_prefs = get_mixer_prefs()
         return (
             "MIXER" == mixer_prefs.display_mixer_vrtist_panels
-            or "MIXER_AND_VRTIST" == mixer_prefs.display_mixer_vrtist_panels
         )
 
     def connected(self):
@@ -715,64 +712,8 @@ class MixerSettingsPanel(bpy.types.Panel):
                 split.prop(current_room, "keep_open", text="")
 
 
-class VRtistSettingsPanel(bpy.types.Panel):
-    bl_label = f"VRtist   V. {display_version or '(Unknown version)'}"
-    bl_idname = "MIXER_PT_vrtist_settings"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "VRtist"
-
-    @classmethod
-    def poll(cls, context):
-        mixer_prefs = get_mixer_prefs()
-        return (
-            "VRTIST" == mixer_prefs.display_mixer_vrtist_panels
-            or "MIXER_AND_VRTIST" == mixer_prefs.display_mixer_vrtist_panels
-        )
-
-    def draw_header(self, context):
-        self.layout.emboss = "NONE"
-        icon = vrtist_icons.vrtist_icons_col["VRtist_32"]
-        row = self.layout.row(align=True)
-        row.operator("vrtist.about", text="", icon_value=icon.icon_id)
-
-    def draw_header_preset(self, context):
-        self.layout.emboss = "NONE"
-        row = self.layout.row(align=True)
-        row.menu("VRTIST_MT_prefs_main_menu", icon="PREFERENCES", text="")
-        row.separator(factor=1.0)
-
-    def draw(self, context):
-        layout = self.layout.column()
-        mixer_prefs = get_mixer_prefs()
-
-        draw_user_settings_ui(layout.row())
-
-        layout.separator(factor=0.2)
-        split = layout.split(factor=0.258, align=False)
-        split.label(text="Host:")
-        split.prop(mixer_prefs, "host", text="")
-
-        split = layout.split(factor=0.258, align=False)
-        split.label(text="Room:")
-        split.prop(mixer_prefs, "room", text="")
-        layout.separator(factor=1.0)
-
-        row = layout.row()
-        row.scale_y = 1.5
-        row.operator(bl_operators.LaunchVRtistOperator.bl_idname, text="Launch VRTist")
-
-        layout.separator(factor=1)
-        layout.prop(
-            mixer_prefs, "VRtist", text="Path", icon=("ERROR" if not os.path.exists(mixer_prefs.VRtist) else "NONE")
-        )
-        layout.prop(mixer_prefs, "VRtist_suffix", text="Save Suffix")
-        layout.separator(factor=0.5)
-
-
 panels = [
     MixerSettingsPanel,
-    VRtistSettingsPanel,
 ]
 
 if use_debug_addon:
@@ -787,17 +728,14 @@ def update_panels_category(self, context):
                 bpy.utils.unregister_class(panel)
 
         for panel in panels:
-            if panel.bl_label.startswith("VRtist"):
-                panel.bl_category = mixer_prefs.vrtist_category
-            else:
-                panel.bl_category = mixer_prefs.category
+            panel.bl_category = mixer_prefs.category
             bpy.utils.register_class(panel)
 
     except Exception as e:
         logger.error(f"Updating Panel category has failed {e!r}")
 
 
-classes = (ROOM_UL_ItemRenderer, SHAREDFOLDER_UL_ItemRenderer, MixerSettingsPanel, VRtistSettingsPanel)
+classes = (ROOM_UL_ItemRenderer, SHAREDFOLDER_UL_ItemRenderer, MixerSettingsPanel)
 register_factory, unregister_factory = bpy.utils.register_classes_factory(classes)
 
 
