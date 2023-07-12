@@ -119,6 +119,9 @@ class SoaElement(Proxy):
         self._member_name = member_name
 
     def array_attr(self, aos: T.bpy_prop_collection, bl_rna: T.bpy_struct) -> Tuple[int, type]:
+        if not aos:
+            return 0, None
+
         prototype_item = getattr(aos[0], self._member_name)
         member_type = type(prototype_item)
 
