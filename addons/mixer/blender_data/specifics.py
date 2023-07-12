@@ -82,6 +82,8 @@ def _resize_geometry_types():
     )
 
 
+from bpy_types import bpy_types
+
 # in sync with soa_initializers
 soable_properties = (
     T.BoolProperty,
@@ -92,14 +94,12 @@ soable_properties = (
     mathutils.Quaternion,
 )
 
-from bpy_types import bpy_types
 
 # in sync with soable_properties
 soa_initializers: Dict[type, array.array] = {
     bool: array.array("b", [0]),
     int: array.array("i", [0]),  # has same itemsize (4) on Linux and Windows
     float: array.array("f", [0.0]),
-    bpy_types.bpy_prop_array: array.array("f", [0.0]),
     mathutils.Vector: array.array("f", [0.0]),
     mathutils.Color: array.array("f", [0.0]),
     mathutils.Quaternion: array.array("f", [0.0]),

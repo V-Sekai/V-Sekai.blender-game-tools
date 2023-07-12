@@ -134,82 +134,72 @@ def build_material(data):
 
     material = get_or_create_material(material_name)
     nodes = material.node_tree.nodes
-    # Get a principled node
     principled = None
-    mtoon_unversioned = None
     if nodes:
         for n in nodes:
             if n.type == "BSDF_PRINCIPLED":
                 principled = n
                 break
-            if n.type == "MToon_unversioned":
-                mtoon_unversioned = n
-                break
 
-    if not principled and not mtoon_unversioned:
+    if not principled:
         logger.error("Cannot find a material node")
         return
 
     index = start
 
-    if mtoon_unversioned:
-        # Base Color
-        base_color, index = common.decode_color(data, index)
-        mtoon_unversioned.inputs["DiffuseColor"] = (base_color[0], base_color[1], base_color[2], 1)
-        index = build_mtoon_texture(mtoon_unversioned, material, "MainTexture", True, data, index)
+    # Transmission (1 - opacity)
+    transmission, index = common.decode_float(data, index)
+    transmission = 1 - transmission
+    principled.inputs["Transmission"].default_value = transmission
 
-    else:
-        # Transmission ( 1 - opacity)
-        transmission, index = common.decode_float(data, index)
-        transmission = 1 - transmission
-        principled.inputs["Transmission"].default_value = transmission
-        file_name, index = common.decode_string(data, index)
-        if len(file_name) > 0:
+    file_name, index = common.decode_string(data, index)
+    if len(file_name) > 0:
+        tex_image = _load_texture_file(material, file_name)
+        if tex_image:
             invert = material.node_tree.nodes.new("ShaderNodeInvert")
             material.node_tree.links.new(principled.inputs["Transmission"], invert.outputs["Color"])
-            tex_image = material.node_tree.nodes.new("ShaderNodeTexImage")
-            try:
-                tex_image.image = bpy.data.images.load(get_resolved_file_path(file_name))
-                tex_image.image.colorspace_settings.name = "Non-Color"
-            except Exception as e:
-                logger.error("could not load file %s ...", get_resolved_file_path(file_name))
-                logger.error("... %s", e)
             material.node_tree.links.new(invert.inputs["Color"], tex_image.outputs["Color"])
 
-        # Base Color
-        base_color, index = common.decode_color(data, index)
-        material.diffuse_color = (base_color[0], base_color[1], base_color[2], 1)
-        principled.inputs["Base Color"].default_value = material.diffuse_color
-        index = build_texture(principled, material, "Base Color", True, data, index)
+    # Base Color
+    base_color, index = common.decode_color(data, index)
+    principled.inputs["Base Color"].default_value = (*base_color, 1)
+    index = build_texture(principled, material, "Base Color", True, data, index)
 
-        # Metallic
-        material.metallic, index = common.decode_float(data, index)
-        principled.inputs["Metallic"].default_value = material.metallic
-        index = build_texture(principled, material, "Metallic", False, data, index)
+    # Metallic
+    material.metallic, index = common.decode_float(data, index)
+    principled.inputs["Metallic"].default_value = material.metallic
+    index = build_texture(principled, material, "Metallic", False, data, index)
 
-        # Roughness
-        material.roughness, index = common.decode_float(data, index)
-        principled.inputs["Roughness"].default_value = material.roughness
-        index = build_texture(principled, material, "Roughness", False, data, index)
+    # Roughness
+    material.roughness, index = common.decode_float(data, index)
+    principled.inputs["Roughness"].default_value = material.roughness
+    index = build_texture(principled, material, "Roughness", False, data, index)
 
-        # Normal
-        file_name, index = common.decode_string(data, index)
-        if len(file_name) > 0:
-            normal_map = material.node_tree.nodes.new("ShaderNodeNormalMap")
-            material.node_tree.links.new(principled.inputs["Normal"], normal_map.outputs["Normal"])
-            tex_image = material.node_tree.nodes.new("ShaderNodeTexImage")
-            try:
-                tex_image.image = bpy.data.images.load(get_resolved_file_path(file_name))
-                tex_image.image.colorspace_settings.name = "Non-Color"
-            except Exception as e:
-                logger.error("could not load file %s ...", get_resolved_file_path(file_name))
-                logger.error("... %s", e)
+    # Normal
+    file_name, index = common.decode_string(data, index)
+    if len(file_name) > 0:
+        normal_map = material.node_tree.nodes.new("ShaderNodeNormalMap")
+        material.node_tree.links.new(principled.inputs["Normal"], normal_map.outputs["Normal"])
+        tex_image = _load_texture_file(material, file_name)
+        if tex_image:
             material.node_tree.links.new(normal_map.inputs["Color"], tex_image.outputs["Color"])
 
-        # Emission
-        emission, index = common.decode_color(data, index)
-        principled.inputs["Emission"].default_value = emission
-        index = build_texture(principled, material, "Emission", False, data, index)
+    # Emission
+    emission, index = common.decode_color(data, index)
+    principled.inputs["Emission"].default_value = (*emission, 1)
+    index = build_texture(principled, material, "Emission", False, data, index)
+
+
+def _load_texture_file(material, file_name):
+    try:
+        tex_image = material.node_tree.nodes.new("ShaderNodeTexImage")
+        tex_image.image = bpy.data.images.load(get_resolved_file_path(file_name))
+        tex_image.image.colorspace_settings.name = "Non-Color"
+        return tex_image
+    except Exception as e:
+        logger.error("Could not load file %s ...", get_resolved_file_path(file_name))
+        logger.error("... %s", e)
+        return None
 
 
 def build_assign_material(data):

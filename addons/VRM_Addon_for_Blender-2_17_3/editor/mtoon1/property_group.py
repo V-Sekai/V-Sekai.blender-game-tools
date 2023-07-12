@@ -327,24 +327,43 @@ class TextureTraceablePropertyGroup(MaterialTraceablePropertyGroup):
         if outline:
             outline.update_image(image)
 
-    def set_texture_uv(self, name: str, value: object) -> None:
-        node_name = self.get_texture_node_name("Uv")
-        material = self.find_material()
-        node_tree = material.node_tree
-        node = node_tree.nodes.get(node_name)
-        if not isinstance(node, bpy.types.ShaderNodeGroup):
-            logger.warning(f'No shader node group "{node_name}"')
-            return
-        socket = node.inputs.get(name)
-        if not socket:
-            logger.warning(f'No "{name}" in shader node group "{node_name}"')
-            return
 
-        socket.default_value = value
+def set_texture_uv(self, name: str, value: object) -> None:
+    node_name = self.get_texture_node_name("Uv")
+    material = self.find_material()
+    
+    if not material:
+        logger.warning(f'Material not found')
+        return
 
-        outline = self.find_outline_property_group(material)
-        if outline:
-            outline.set_texture_uv(name, value)
+    node_tree = material.node_tree
+    
+    if not node_tree:
+        logger.warning(f'No node tree in material')
+        return
+
+    node = node_tree.nodes.get(node_name)
+        
+    if not node:
+        logger.warning(f'No node with name "{node_name}"')
+        return
+        
+    if not isinstance(node, bpy.types.ShaderNodeGroup):
+        logger.warning(f'No shader node group "{node_name}"')
+        return
+        
+    socket = node.inputs.get(name)
+
+    if not socket:
+        logger.warning(f'No "{name}" in shader node group "{node_name}"')
+        return
+
+    socket.default_value = value
+    
+    outline = self.find_outline_property_group(material)
+    
+    if outline:
+        outline.set_texture_uv(name, value)
 
 
 class Mtoon1KhrTextureTransformPropertyGroup(TextureTraceablePropertyGroup):

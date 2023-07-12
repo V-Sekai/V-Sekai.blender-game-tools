@@ -1,6 +1,6 @@
 # How to run the mixer server?
 
-Go one above this mixer folder.
+Go one above this mixer folder. `cd ../../`
 
 Execute `python.exe -m mixer.broadcaster.apps.server`.
 

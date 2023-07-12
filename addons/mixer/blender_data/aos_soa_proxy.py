@@ -151,9 +151,13 @@ class SoaElement(Proxy):
         else:
             array_size, member_type = self.array_attr(aos, bl_rna)
             typecode = soa_initializers[member_type].typecode
-            buffer = self._array
-            if buffer is None or buffer.buffer_info()[1] != array_size or buffer.typecode != typecode:
-                self._array = soa_initializer(member_type, array_size)
+            if member_type == bpy.types.bpy_prop_array:
+                typecode = bpy.types.bpy_prop_array
+                self._array = [0.0] * array_size
+            else:
+                buffer = self._array
+                if buffer is None or buffer.buffer_info()[1] != array_size or buffer.typecode != typecode:
+                    self._array = soa_initializer(member_type, array_size)
 
             # if foreach_get() raises "RuntimeError: internal error setting the array"
             # it means that the array is ill-formed.

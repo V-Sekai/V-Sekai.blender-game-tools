@@ -133,11 +133,17 @@ class HandlerManager:
 @persistent
 def handler_send_frame_changed(scene):
     logger.debug("handler_send_frame_changed")
+
+    if not share_data.client:
+        logger.debug("handler_send_frame_changed canceled (client is None)")
+        return
+
     if share_data.client.block_signals:
         logger.debug("handler_send_frame_changed canceled (block_signals = True)")
         return
 
     share_data.client.synced_time_messages = True
+    
     try:
         send_frame_changed(scene)
     finally:
