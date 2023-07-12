@@ -111,6 +111,7 @@ def wait_for_server(host, port):
 
 def start_local_server():
     import mixer
+    import sys
 
     dir_path = Path(mixer.__file__).parent.parent  # broadcaster is submodule of mixer
 
@@ -120,7 +121,7 @@ def start_local_server():
         args = {}
 
     share_data.local_server_process = subprocess.Popen(
-        [bpy.app.binary_path_python, "-m", "mixer.broadcaster.apps.server", "--port", str(get_mixer_prefs().port)],
+        [sys.executable, "-m", "mixer.broadcaster.apps.server", "--port", str(get_mixer_prefs().port)],
         cwd=dir_path,
         shell=False,
         **args,
