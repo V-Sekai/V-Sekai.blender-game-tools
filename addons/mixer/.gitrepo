@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/mixer.git
 	branch = main
-	commit = d47d22bb6f1c3e5190a028e6ac2a2813773f6f02
-	parent = 45e53773510fb5bcdd6eafa61ee00cd6147a0d40
+	commit = da9103f4b6cc5af91a6c1c7c109519bae7ca8f37
+	parent = b4c3023736396033573994e33b9ff69a9feb6a77
 	method = merge
 	cmdver = 0.4.6
