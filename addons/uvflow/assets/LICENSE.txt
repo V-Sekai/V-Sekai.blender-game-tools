@@ -1,0 +1,27 @@
+ROYALTY-FREE LICENSE
+
+The assets in this folder and distributed by Orange Turbine (Licensor) under a royalty free license. By using UV Flow, you (Licensee) agree to the below terms:
+
+Grant of License.
+Licensor hereby grants to Licensee a non-exclusive, non-transferable, royalty-free license to use the assets (the "Product") for the purpose of creating digital artwork using Blender.
+
+Ownership.
+Licensor retains all ownership rights in and to the Product, including all intellectual property rights.
+
+Restrictions.
+Licensee shall not modify, distribute, sell, sublicense, or otherwise transfer the Product or any part thereof, except as expressly permitted in this Agreement.
+
+Royalties.
+Licensee shall not be required to pay any royalties or fees to Licensor for the use of the Product.
+
+Termination.
+Either party may terminate this Agreement at any time for any reason or for no reason upon written notice to the other party.
+
+Warranty Disclaimer.
+Licensor makes no representations or warranties, express or implied, regarding the Product, including without limitation, any implied warranties of merchantability, fitness for a particular purpose, or non-infringement of intellectual property rights.
+
+Limitation of Liability.
+Licensor shall not be liable to Licensee for any damages arising out of or in connection with the use of the Product, whether in contract, tort, or otherwise.
+
+Governing Law.
+This Agreement shall be governed by and construed in accordance with the laws of the United States without giving effect to any choice of law or conflict of law provisions.
