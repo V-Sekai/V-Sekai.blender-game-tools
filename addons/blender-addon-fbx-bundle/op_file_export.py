@@ -114,7 +114,7 @@ def export(self, target_platform):
                 # Copy
                 bpy.ops.object.duplicate()
 
-                # apply modifiers
+                # Apply modifiers
                 if obj.type == 'MESH':
                     bpy.ops.object.convert(target='MESH')
                 

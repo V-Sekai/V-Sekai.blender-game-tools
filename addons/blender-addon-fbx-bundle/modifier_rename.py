@@ -21,9 +21,9 @@ class Settings(modifier.Settings):
 		name="Active",
 		default=False
 	)
-	path = bpy.props.StringProperty(default="{path}")
-	file = bpy.props.StringProperty(default="{bundle}")
-	obj = bpy.props.StringProperty(default="{object}")
+	path: bpy.props.StringProperty(default="{path}")
+	file: bpy.props.StringProperty(default="{bundle}")
+	obj: bpy.props.StringProperty(default="{object}")
 
 
 

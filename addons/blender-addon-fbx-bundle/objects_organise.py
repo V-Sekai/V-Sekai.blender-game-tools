@@ -29,9 +29,18 @@ def get_objects():
 	# Include all children?
 	if len(objects) > 0 and bpy.context.scene.FBXBundleSettings.include_children:
 		
+		limit = 100  # max depth
+
+		def collect_recursive(obj, depth):
+			if obj not in objects:
+				objects.append(obj)
+			
+			if depth < limit:#Don't exceed limit on traversal depth
+				for child in obj.children:
+					collect_recursive(child, depth+1)
+		
 		if bpy.context.scene.FBXBundleSettings.mode_bundle == 'PARENT':
 			# Collect parent and children objects
-			limit = 100 # max
 			roots = []
 
 			# Collect roots from input selection
@@ -44,14 +53,6 @@ def get_objects():
 						break
 				if root not in roots:
 					roots.append(root)
-
-			def collect_recursive(obj, depth):
-				if obj not in objects:
-					objects.append(obj)
-				
-				if depth < limit:#Don't exceed limit on traversal depth
-					for child in obj.children:
-						collect_recursive(child, depth+1)
 
 			# Traverse loops and its nested elements
 			for root in roots:
@@ -79,6 +80,12 @@ def get_objects():
 			for obj in bpy.context.scene.objects:
 				if obj not in objects:
 					objects.append(obj)
+		
+		elif bpy.context.scene.FBXBundleSettings.mode_bundle == 'COLLECTION_INSTANCE':
+			# Collect children obejcts
+			for obj in objects:
+				collect_recursive(obj, 0)
+
 
 	filtered = []
 	for obj in objects:
@@ -370,8 +377,23 @@ def get_key(obj):
 	
 	elif mode_bundle == 'COLLECTION_INSTANCE':
 		# Use collection instance name
-		if obj.instance_collection:
-			return obj.instance_collection.name	
+		if bpy.context.scene.FBXBundleSettings.include_children:
+			if obj.parent:
+				limit = 100
+				obj_parent = obj.parent
+				for i in range(limit):
+					if obj_parent.parent:
+						obj_parent = obj_parent.parent
+					else:
+						break
+				if obj_parent.instance_collection:
+					return obj_parent.instance_collection.name
+			elif obj.instance_collection:
+				return obj.instance_collection.name
+		else:
+			if obj.instance_collection:
+				return obj.instance_collection.name
+		
 
 	elif mode_bundle == 'MATERIAL':
 		# Use material name
@@ -383,7 +405,6 @@ def get_key(obj):
 		return bpy.context.scene.name
 
 	elif mode_bundle == 'SPACE':
-		# print("_________")
 
 		# Do objects share same space with bounds?
 		objects = get_objects()
@@ -467,3 +488,71 @@ class ObjectBounds:
 		collide_y = is_collide_1D(self.min.y, self.max.y, other.min.y, other.max.y)
 		collide_z = is_collide_1D(self.min.z, self.max.z, other.min.z, other.max.z)
 		return collide_x and collide_y and collide_z
+
+
+def consolidate_objects(objects, apply_normals, merge_uvs=True, convert_mesh=True):
+	for obj in objects:
+			if obj.type == 'EMPTY' and obj.instance_collection:
+				bpy.ops.object.duplicates_make_real()
+				# Append newly converted objects
+				objects.extend(bpy.context.selected_objects)
+
+	
+	# Find a mesh object so we can run convert operator
+	make_mesh_type_active(objects)
+
+	bpy.ops.object.make_single_user(
+			type='SELECTED_OBJECTS', object=False, obdata=True)
+	
+	# TODO figure out a better way to preserve auto smooth
+	if apply_normals:
+		for obj in objects:				
+			if obj.type == 'MESH':
+				data = obj.data
+				if data.use_auto_smooth:
+					mod = obj.modifiers.new("Split Normals","EDGE_SPLIT")
+					mod.split_angle = data.auto_smooth_angle
+	
+	if convert_mesh:
+		bpy.ops.object.convert(target='MESH', keep_original=False)
+		bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+
+	if merge_uvs:
+		# Consolidate UVs
+		uv_map_name = "UVMap"
+		for obj in objects:
+			#bpy.context.view_layer.objects.active = obj
+			if obj.type == 'MESH':
+				for layer in obj.data.uv_layers:
+					if layer.active_render:
+						active = layer
+						active.name = uv_map_name
+					else:
+						if not layer.name == "Lightmap":
+							obj.data.uv_layers.remove(layer)
+
+	# Consolidate UVs
+	uv_map_name = "UVMap"
+	for obj in objects:
+		bpy.context.view_layer.objects.active = obj
+		if obj.type == 'MESH':
+			for layer in obj.data.uv_layers:
+				if layer.active_render:
+					active = layer
+					active.name = uv_map_name
+				else:
+					if not layer.name == "Lightmap":
+						obj.data.uv_layers.remove(layer)
+
+	#Find Mesh Type Again
+	make_mesh_type_active(objects)
+
+	return objects
+
+def make_mesh_type_active(objects):
+		for obj in objects:
+			if obj.type == 'MESH':
+				bpy.context.view_layer.objects.active = obj
+				print("Active should be " + obj.name)
+				break
+			continue

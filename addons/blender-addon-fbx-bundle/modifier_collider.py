@@ -9,11 +9,11 @@ imp.reload(modifier)
 
 
 class Settings(modifier.Settings):
-	active = bpy.props.BoolProperty (
+	active: bpy.props.BoolProperty (
 		name="Active",
 		default=False
 	)
-	ratio = bpy.props.FloatProperty (
+	ratio: bpy.props.FloatProperty (
 		default=0.35,
 		min = 0.01,
 		max = 1,
@@ -21,7 +21,7 @@ class Settings(modifier.Settings):
 		subtype='FACTOR'
 	)
 
-	angle = bpy.props.FloatProperty (
+	angle: bpy.props.FloatProperty (
 		default=40,
 		min = 5,
 		max = 55,

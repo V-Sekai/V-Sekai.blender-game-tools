@@ -8,11 +8,11 @@ imp.reload(modifier)
 
 
 class Settings(modifier.Settings):
-	active = bpy.props.BoolProperty (
+	active: bpy.props.BoolProperty (
 		name="Active",
 		default=False
 	)
-	source = bpy.props.StringProperty()
+	source: bpy.props.StringProperty()
 
 
 

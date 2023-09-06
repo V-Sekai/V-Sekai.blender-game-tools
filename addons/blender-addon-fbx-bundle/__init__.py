@@ -59,7 +59,7 @@ bl_info = {
 	"description": "Export object selections in FBX bundles",
 	"author": "renderhjs",
 	"blender": (2, 80, 0),
-	"version": (1, 5, 1),
+	"version": (1, 5, 3),
 	"category": "3D View",
 	"location": "View3D",
 	"warning": "",
@@ -119,12 +119,12 @@ class FBXBundleSettings(bpy.types.PropertyGroup):
 	)
 	collapseBundles: bpy.props.BoolProperty (
 		name="Collapse",
-		default=False,
+		default=True,
 		description="Compact list view"
 	)
 	include_children: bpy.props.BoolProperty (
 		name="Incl. Children",
-		default=False,
+		default=True,
 		description="Include nested children in bundles, e.g parent or group."
 	)
 	recent: bpy.props.StringProperty (
@@ -141,7 +141,7 @@ class FBXBundleSettings(bpy.types.PropertyGroup):
 		('COLLECTION_INSTANCE', 'Collection Instance', "Bundle by 'Collection'"),
 		('MATERIAL', 'Material', "Bundle by matching material names"),
 		('SCENE', 'Scene', "Bundle by current scene")
-		], name = "Bundle Mode", default = 'NAME'
+		], name = "Bundle Mode", default = 'PARENT'
 	)
 	mode_pivot: bpy.props.EnumProperty(items=[
 		('OBJECT_FIRST', 'First Name', "Pivot at the first object sorted by name"), 
@@ -150,7 +150,7 @@ class FBXBundleSettings(bpy.types.PropertyGroup):
 		('SCENE', 'Scene 0,0,0', "Pivot at the Scene center 0,0,0'"),
 		('PARENT', 'Parent', "Pivot from the parent object"),
 		('EMPTY', 'Empty Gizmo', "Empty gizmo object of: Arrow, Plain Axes, Single Arrow")
-		], name = "Pivot From", default = 'OBJECT_FIRST'
+		], name = "Pivot From", default = 'PARENT'
 	)
 	target_platform: bpy.props.EnumProperty(items= 
 		[	
@@ -158,7 +158,8 @@ class FBXBundleSettings(bpy.types.PropertyGroup):
 			('UNREAL', 'Unreal', 'Unreal engine export'),
 			('BLENDER', 'Collada', 'Default Blender *.DAE export'),
 			('GLTF', 'glTF', 'GL Transmission Format'),
-			('OBJ', 'OBJ', 'OBJ')
+			('OBJ', 'OBJ', 'OBJ'),
+			('HOUDINI', 'Houdini', 'SideFX Houdini export')
 		], 
 		description="Target platform for the FBX exports.",
 		name = "Target Platform", 
@@ -502,12 +503,12 @@ class op_remove(bpy.types.Operator):
 def icon_get(name):
 	if name not in preview_icons:
 		print("Icon '{}' not found ".format(name))
-	# TODO fix broken icons. Don't understand why it can't find OBJ?
 	return preview_icons[name].icon_id
 
 
 preview_icons = None
 def icon_register(fileName):
+	print(fileName)
 	name = fileName.split('.')[0]   # Don't include file extension
 	icons_dir = os.path.join(os.path.dirname(__file__), "icons")
 	preview_icons.load(name, os.path.join(icons_dir, fileName), 'IMAGE')
@@ -549,7 +550,8 @@ def register():
 		"unreal.png", 
 		"blender.png",
 		"gltf.png",
-		"obj.png"
+		"obj.png",
+		"houdini.png"
 	]
 	for icon in icons:
 		icon_register(icon)

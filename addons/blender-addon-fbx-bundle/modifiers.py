@@ -6,6 +6,7 @@ from mathutils import Vector
 
 from . import modifier_rename
 from . import modifier_merge
+from . import modifier_make_inst_real
 from . import modifier_copy_modifiers
 from . import modifier_collider
 from . import modifier_LOD
@@ -17,7 +18,8 @@ from . import modifier_lightmap
 
 import imp
 imp.reload(modifier_rename) 
-imp.reload(modifier_merge) 
+imp.reload(modifier_merge)
+imp.reload(modifier_make_inst_real)
 imp.reload(modifier_copy_modifiers) 
 imp.reload(modifier_collider) 
 imp.reload(modifier_LOD) 
@@ -32,6 +34,7 @@ modifiers = list([
 	modifier_offset_transform.Modifier(),
 	modifier_copy_modifiers.Modifier(),
 	modifier_merge.Modifier(),
+    modifier_make_inst_real.Modifier(),
 	modifier_collider.Modifier(),
 	modifier_LOD.Modifier(),
 	modifier_vertex_ao.Modifier(),

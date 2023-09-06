@@ -15,8 +15,10 @@ class Platform(platform.Platform):
 		
 
 	def is_valid(self):
-		# Plugin available for GLTF?
+		# Plugin available for FLTF?
 		mode = bpy.context.scene.FBXBundleSettings.target_platform
+		if 'io_scene_gltf2' not in addon_utils.addons_fake_modules:
+			return False, "GLTF addon not installed"
 
 		if not addon_utils.check("io_scene_gltf2")[1]:
 			return False, "GLTF addon not enabled"

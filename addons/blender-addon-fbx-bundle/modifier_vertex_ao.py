@@ -9,11 +9,11 @@ imp.reload(modifier)
 
 
 class Settings(modifier.Settings):
-	active = bpy.props.BoolProperty (
+	active: bpy.props.BoolProperty (
 		name="Active",
 		default=False
 	)
-	contrast = bpy.props.FloatProperty (
+	contrast: bpy.props.FloatProperty (
 		default=0.5,
 		min = 0,
 		max = 1,
