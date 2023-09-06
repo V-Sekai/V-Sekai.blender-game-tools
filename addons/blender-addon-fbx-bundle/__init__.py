@@ -163,7 +163,7 @@ class FBXBundleSettings(bpy.types.PropertyGroup):
 		], 
 		description="Target platform for the FBX exports.",
 		name = "Target Platform", 
-		default = 'UNITY'
+		default = 'GLTF'
 	)
 
 
