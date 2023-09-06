@@ -1,5 +1,0 @@
-# Add any directories, files, or patterns you don't want to be tracked by version control
-addons/uv_align_distribute/*
-*__pycache__*
-.vscode/
-.DS_Store
