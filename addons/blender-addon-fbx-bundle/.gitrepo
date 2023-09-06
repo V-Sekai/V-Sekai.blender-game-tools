@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/V-Sekai.blender-addon-fbx-bundle.git
+	branch = master
+	commit = 48c1c887360710ee9b9d157b12ca9df5f1d983ee
+	parent = cdd593abfe6aa3eb19915721b2e39935cdd64b3f
+	method = merge
+	cmdver = 0.4.6
