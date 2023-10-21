@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/leukbaars/DreamUV.git
+	branch = master
+	commit = b900938ba18697842a2a3be62814c26f07ed3547
+	parent = 7712bd1d4b9597bcfbd7c793797191b9bd011707
+	method = merge
+	cmdver = 0.4.6
