@@ -151,12 +151,6 @@ class AbstractBaseVrmImporter(ABC):
 
             bpy.ops.object.mode_set(mode="EDIT")
 
-            if bpy.app.version >= (4, 0):
-                connect_parent_tail_and_child_head_if_very_close_position(
-                    self.armature_data
-                )
-                return
-
             for bone_name in bone_name_to_human_bone_name:
                 bone = self.armature_data.edit_bones.get(bone_name)
                 while bone:
@@ -1298,24 +1292,24 @@ class AbstractBaseVrmImporter(ABC):
         for bone_group in secondary_animation.bone_groups:
             bone_group.refresh(armature)
 
-    def cleaning_data(self) -> None:
-        # collection setting
-        bpy.ops.object.mode_set(mode="OBJECT")
-        bpy.ops.object.select_all(action="DESELECT")
-        for obj in self.meshes.values():
-            self.context.view_layer.objects.active = obj
-            obj.select_set(True)
-            bpy.ops.object.shade_smooth()
-            bpy.ops.object.select_all(action="DESELECT")
-
     def viewport_setup(self) -> None:
         preferences = get_preferences(self.context)
         if self.armature and preferences.set_armature_display_to_wire:
             self.armature.display_type = "WIRE"
         if self.armature and preferences.set_armature_display_to_show_in_front:
             self.armature.show_in_front = True
+
         if preferences.set_view_transform_to_standard_on_import:
-            self.context.scene.view_settings.view_transform = "Standard"
+            # https://github.com/saturday06/VRM-Addon-for-Blender/issues/336#issuecomment-1760729404
+            view_settings = self.context.scene.view_settings
+            try:
+                view_settings.view_transform = "Standard"
+            except TypeError:
+                logger.exception(
+                    "scene.view_settings.view_transform"
+                    + ' doesn\'t support "Standard".'
+                )
+
         if preferences.set_shading_type_to_material_on_import:
             screen = self.context.screen
             for area in screen.areas:

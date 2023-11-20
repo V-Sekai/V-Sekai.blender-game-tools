@@ -73,7 +73,7 @@ class Gltf2AddonVrmImporter(AbstractBaseVrmImporter):
 
     def import_vrm(self) -> None:
         wm = self.context.window_manager
-        wm.progress_begin(0, 9)
+        wm.progress_begin(0, 8)
         try:
             affected_object = self.scene_init()
             wm.progress_update(1)
@@ -97,10 +97,8 @@ class Gltf2AddonVrmImporter(AbstractBaseVrmImporter):
             elif self.parse_result.vrm0_extension:
                 self.load_vrm0_extensions()
             wm.progress_update(6)
-            self.cleaning_data()
-            wm.progress_update(7)
             self.finishing(affected_object)
-            wm.progress_update(8)
+            wm.progress_update(7)
             self.viewport_setup()
         finally:
             try:
@@ -117,8 +115,19 @@ class Gltf2AddonVrmImporter(AbstractBaseVrmImporter):
         if isinstance(source, int):
             image = self.images.get(source)
             if image:
-                image.colorspace_settings.name = texture.colorspace
                 texture.source = image
+
+                # https://github.com/saturday06/VRM-Addon-for-Blender/issues/336#issuecomment-1760729404
+                colorspace_settings = image.colorspace_settings
+                try:
+                    colorspace_settings.name = texture.colorspace
+                except TypeError:
+                    logger.exception(
+                        f"image.colorspace_settings.name doesn't support {texture.colorspace}."
+                    )
+                    if texture.colorspace == "Non-Color":
+                        with contextlib.suppress(TypeError):
+                            colorspace_settings.name = "Generic Data"
 
         sampler = texture_dict.get("sampler")
         samplers = self.parse_result.json_dict.get("samplers")
@@ -1094,7 +1103,7 @@ class Gltf2AddonVrmImporter(AbstractBaseVrmImporter):
                                 else FLOAT_NEGATIVE_MAX
                             )
 
-        if self.parse_result.spec_version_number < (1, 0) and bpy.app.version < (4, 0):
+        if self.parse_result.spec_version_number < (1, 0):
             bone_heuristic = "FORTUNE"
         else:
             bone_heuristic = "BLENDER"

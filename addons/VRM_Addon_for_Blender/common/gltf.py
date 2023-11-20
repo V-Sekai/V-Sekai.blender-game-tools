@@ -1,6 +1,6 @@
 import json
 import struct
-from typing import Optional
+from typing import Optional, Union
 
 from .binary_reader import BinaryReader
 from .deep import Json
@@ -69,9 +69,14 @@ def parse_glb(data: bytes) -> tuple[dict[str, Json], bytes]:
     return json_obj, body if body else bytes()
 
 
-def pack_glb(json_dict: dict[str, Json], binary_chunk: bytes) -> bytes:
+def pack_glb(
+    json_dict: dict[str, Json], binary_chunk: Union[bytes, bytearray]
+) -> bytes:
     magic = b"glTF" + struct.pack("<I", 2)
-    json_str = json.dumps(json_dict).encode("utf-8")
+    json_str = json.dumps(
+        json_dict,
+        ensure_ascii=False,  # UniVRM 0.56.3はエディタインポート時のUnicodeエスケープに未対応
+    ).encode("utf-8")
     if len(json_str) % 4 != 0:
         json_str += b"\x20" * (4 - len(json_str) % 4)
     json_size = struct.pack("<I", len(json_str))
