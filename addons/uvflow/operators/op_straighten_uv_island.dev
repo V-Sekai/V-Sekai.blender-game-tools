@@ -1,0 +1,739 @@
+import bpy
+from bpy.types import Mesh, MeshUVLoopLayer, MeshUVLoop, MeshEdge, MeshPolygon, MeshVertex, MeshLoop
+from mathutils import Vector, kdtree
+import bmesh
+from bpy_extras import mesh_utils
+from bmesh.types import BMVert, BMEdge, BMLoop, BMLoopUV, BMesh, BMFace
+from bpy.props import EnumProperty
+
+import numpy as np
+from dataclasses import dataclass
+import heapq
+from collections import defaultdict, deque
+from queue import PriorityQueue
+
+from uvflow.utils.mode import CM_ModeToggle
+from uvflow.addon_utils.types.math import BBOX_2
+from uvflow.addon_utils import Register
+
+
+
+def calculate_distance_uv(bloop_uv_1: 'BoundaryLoopUV', bloop_uv_2: 'BoundaryLoopUV'):
+    # Calculate the distance between two UV loops (you can define your own distance metric)
+    return (bloop_uv_1.uv - bloop_uv_2.uv).length
+
+
+# Function to find the shortest path using Dijkstra's algorithm
+def find_shortest_path_by_vertices(bloop_uvs: list['BoundaryLoopUV'], filter_vertices: list[BMVert], start_vertex: BMVert, end_vertex: BMVert):
+    loop_index_2_bloop_uv = {bloop_uv.loop.index: bloop_uv for bloop_uv in bloop_uvs}
+    filter_vert_indices = {v.index for v in filter_vertices}
+
+    # Create a dictionary to keep track of distances
+    distances = {}
+    for vertex in filter_vertices:
+        distances[vertex] = float('inf')
+    distances[start_vertex] = 0
+
+    # Create a dictionary to keep track of previous vertices in the path
+    previous_vertices = {}
+
+    # Create a priority queue for vertices to explore
+    priority_queue = [(0, start_vertex)]
+
+    while priority_queue:
+        current_distance, current_vertex = priority_queue.pop(0)
+        current_vertex_index = current_vertex.index
+
+        # bvert = rel_boundary_verts[current_vertex_index]
+        # v_uv = bvert.uv
+
+        if current_distance > distances[current_vertex]:
+            continue
+
+        for neighbor in current_vertex.link_edges:
+            neighbor_vertex = neighbor.other_vert(current_vertex)
+
+            if neighbor_vertex.index not in filter_vert_indices:
+                continue
+
+            # n_bvert = rel_boundary_verts[neighbor_vertex.index]
+
+            weight = neighbor.calc_length()
+            distance = distances[current_vertex] + weight
+
+            if distance < distances[neighbor_vertex]:
+                distances[neighbor_vertex] = distance
+                previous_vertices[neighbor_vertex] = current_vertex
+                priority_queue.append((distance, neighbor_vertex))
+
+    # Reconstruct the path
+    path = []
+    current_vertex = end_vertex
+    while current_vertex in previous_vertices:
+        path.insert(0, current_vertex)
+        current_vertex = previous_vertices[current_vertex]
+    path.insert(0, start_vertex)
+
+    return path
+
+
+def find_shortest_path_by_loops(bm_loop: list[BMLoop], bloop_uvs: list['BoundaryLoopUV'], start_bloop_uv: 'BoundaryLoopUV', end_bloop_uv: 'BoundaryLoopUV'):
+    print("_____find_shortest_path_by_loops_______________________")
+    loop_index_2_bloop_uv = {bloop_uv.loop.index: bloop_uv for bloop_uv in bloop_uvs}
+
+    loop_selection = {loop for loop in bloop_uvs}
+    vert_selection = {loop.vert for loop in bloop_uvs}
+
+    # for loop in bm_loop:
+    #     if loop.index not in loop_index_2_bloop_uv:
+    #         continue
+    #     bloop = loop_index_2_bloop_uv[loop.index]
+
+
+    # Split edges to confirm and to exclude from selection
+    # walked_v1: set[BMEdge] = {start_bloop_uv.loop}
+    # walked_v2: set[BMEdge] = {start_bloop_uv.loop}
+
+    # start_vert = start_bloop_uv.vert
+    # end_edge = end_bloop_uv.edge
+
+    def walk_loop(loop: BMLoop, break_loop: BMLoop, walked: set[BMLoop]) -> set[BMLoop]:
+        print("\t- WALK LOOP", loop.index)
+        if loop == break_loop:
+            print("\t- STOP > loop == break_loop")
+            return walked
+
+        _loop = loop.link_loop_next # .link_loop_radial_prev.link_loop_prev
+
+        # other_vert = loop.edge.other_vert(loop.vert)
+        # for _loop in other_vert.link_loops: # loop.link_loops: # other_vert.link_loops:
+        print("\t- Process Loop...", _loop.index)
+        if _loop == loop:
+            print("\t\t- Next! Equal loops!")
+            # continue
+        elif _loop in walked:
+            print("\t\t- Next! Is already walked!")
+            # continue
+        elif _loop.vert.index == loop.vert.index:
+            print("\t\t- Next! Loops with equal vertices!")
+            # continue
+        elif _loop.index in loop_index_2_bloop_uv:
+            # Continue the walk...
+            print("\t\t- Walk another loop...")
+            walked.add(_loop)
+            return walk_loop(_loop, break_loop, walked)
+        # else:
+        #     print("\t\t- Try walking in another way...")
+        #     return walk_loop(loop.link_loop_radial_prev.link_loop_prev, break_loop, walked)
+
+        print("\t- STOP > NO MORE LOOPS TO PROCESS!!??")
+        return walked
+
+    # Walk...
+    walked_loops = [
+        walk_loop(
+            _loop, end_bloop_uv.loop, {start_bloop_uv.loop}
+        ) for _loop in (start_bloop_uv.loop,) # for _loop in edge.link_loops if _loop in loop_selection # if _loop.vert.index != start_bloop_uv.vert.index
+    ]
+
+    if walked_loops == []:
+        print("CACA...")
+        return []
+    # walk_loop(start_bloop_uv.loop, end_bloop_uv.loop, walked_v1)
+    # walk_loop(end_bloop_uv.loop, start_bloop_uv.loop, walked_v2)
+
+    walk_sizes = [(len(w), w) for w in walked_loops]
+    min_walk_path = min(walk_sizes, key=lambda x: x[0])[1]
+
+    print([l.vert.index for l in min_walk_path])
+    return [loop_index_2_bloop_uv[l.index] for l in min_walk_path]
+
+
+def walk_from_vert_to_vert(bm_loop: list[BMLoop], boundary_loop_uvs: list['BoundaryLoopUV'], start_bloop_uv: 'BoundaryLoopUV', end_bloop_uv: 'BoundaryLoopUV', border_id: str) -> list['BoundaryLoopUV']:
+    # return find_shortest_path_by_loops(bm_loop, boundary_loop_uvs, start_bloop_uv, end_bloop_uv)
+    bpy.ops.uv.select_all(False, action='DESELECT')
+    bpy.ops.uv.select_mode(False, type='EDGE')
+    if start_bloop_uv.vert.index == end_bloop_uv.vert.index:
+        print("OPS! Grid loop UV Island")
+        if border_id == 'R':
+            start_loop_uv = start_bloop_uv.loop.link_loop_next[start_bloop_uv.uv_layer_accessor]
+            end_loop_uv = end_bloop_uv.loop.link_loop_prev[end_bloop_uv.uv_layer_accessor]
+        elif border_id == 'L':
+            start_loop_uv = start_bloop_uv.loop.link_loop_prev[start_bloop_uv.uv_layer_accessor]
+            end_loop_uv = end_bloop_uv.loop.link_loop_next[end_bloop_uv.uv_layer_accessor]
+        # OH OH! Problems!
+        #start_end_distance = calculate_distance_uv(start_bloop_uv, end_bloop_uv)
+        #loop_vert = start_bloop_uv.vert
+        #while 1:
+        #    other_verts = {lk_edge.other_vert(loop_vert) for lk_edge in loop_vert.link_edges}
+        #    for lk_loop in start_bloop_uv.linked_loop:
+        #        if lk_loop.vert in other_verts:
+        #            lk_loop_uv: BMLoopUV = lk_loop[start_bloop_uv.uv_layer_accessor]
+        #            lk_end_distance = calculate_distance_uv(lk_loop_uv, end_bloop_uv)
+        #            if lk_end_distance < start_end_distance:
+        #                start_end_distance = lk_end_distance
+        #                start_bloop_uv.loop_uv.select = True
+        #                lk_loop_uv.select = True
+        #                end_bloop_uv.loop_uv.select = True
+        #                loop_vert = start_bloop_uv.vert
+        #                break
+        #    if loop_vert.index == end_bloop_uv.vert.index:
+        #        break
+    else:
+        start_loop_uv = start_bloop_uv.loop_uv
+        end_loop_uv = end_bloop_uv.loop_uv
+    start_loop_uv.select_edge = True
+    end_loop_uv.select_edge = True
+    bpy.ops.uv.shortest_path_select(use_face_step=False, use_topology_distance=False, use_fill=False, skip=0, nth=1, offset=0)
+    sel_bloop_uvs = [bloop_uv for bloop_uv in boundary_loop_uvs if bloop_uv.loop_uv.select]
+    return sel_bloop_uvs # find_shortest_path(boundary_loop_uvs, start_bloop_uv, end_bloop_uv)
+
+
+@dataclass
+class MeshUVPrimLink:
+    bm: BMesh
+    loop_uv_accessor: object
+    loop_index: int
+    vertex_index: int
+    edge_index: int
+    face_index: int
+    is_boundary: bool
+
+    @property
+    def loop(self) -> BMLoop:
+        return self.bm.faces[self.face_index].loops[self.loop_index]
+
+    @property
+    def uv_loop(self) -> BMLoopUV:
+        return self.loop[self.loop_uv_accessor]
+
+    @property
+    def uv(self) -> Vector:
+        return Vector(self.uv_loop.uv)
+
+    @uv.setter
+    def uv(self, uv: Vector) -> None:
+        self.uv_loop.uv = uv
+
+    @property
+    def pin_uv(self) -> bool:
+        return self.uv_loop.pin_uv
+
+    @pin_uv.setter
+    def pin_uv(self, pin_uv: bool) -> None:
+        self.uv_loop.pin_uv = pin_uv
+
+    @property
+    def vert(self) -> BMVert:
+        return self.bm.verts[self.vertex_index]
+
+    @property
+    def edge(self) -> BMEdge:
+        return self.bm.edges[self.edge_index]
+
+
+@dataclass
+class BoundaryLoopUV:
+    uv_layer_accessor: object
+    loop: BMLoop
+
+    @property
+    def vert(self) -> BMVert:
+        return self.loop.vert
+
+    @property
+    def edge(self) -> BMEdge:
+        return self.loop.edge
+
+    @property
+    def face(self) -> BMFace:
+        return self.loop.face
+
+    @property
+    def loop_uv(self) -> BMLoopUV:
+        return self.loop[self.uv_layer_accessor]
+
+    @property
+    def linked_loop(self) -> list[BMLoop]:
+        return self.loop.link_loops
+
+    @property
+    def linked_loop_uv(self) -> list[tuple[int, BMLoopUV]]:
+        return [(loop.index, loop[self.uv_layer_accessor]) for loop in self.linked_loop]
+
+    @property
+    def uv(self) -> Vector:
+        return self.loop_uv.uv
+
+    @property
+    def pin_uv(self) -> Vector:
+        return self.loop_uv.pin_uv
+
+    def __hash__(self):
+        return hash(self.loop)
+
+
+    @property
+    def debug_dict(self) -> dict:
+        return {
+            'loop_index': self.loop.index,
+            'vert_index': self.vert.index,
+            'uv': self.uv.to_tuple()
+        }
+
+
+@dataclass
+class BoundaryVert:
+    loop_index: int
+    face_index: int
+    vert_index: int
+    uv: Vector
+
+
+class UVIslandData:
+    @property
+    def mesh(self) -> Mesh | None:
+        return bpy.data.meshes.get(self._mesh, None)
+
+    @property
+    def active_uv_layer(self) -> MeshUVLoopLayer:
+        return self.mesh.uv_layers.active
+
+    def __enter__(self) -> 'UVIslandData':
+        mesh = self.mesh
+        self.bm = bmesh.from_edit_mesh(mesh)
+        self.bm.verts.ensure_lookup_table()
+        self.bm.verts.index_update()
+        self.bm.edges.ensure_lookup_table()
+        self.bm.edges.index_update()
+        self.bm.faces.ensure_lookup_table()
+        self.bm.faces.index_update()
+
+        # self.init_selection(uv_layer)
+        self.bm_loops: list[BMLoop] = [l for f in self.bm.faces for l in f.loops] # if l[loop_uv_accessor].select]
+        self.calc_boundaries(pin_boundaries=True)
+
+        return self
+
+    def __exit__(self, exc_type, exc_value, trace) -> None:
+        self.bm.free()
+        del self.bm
+        del self.uv_prim_link
+        del self.boundary_loop_uvs
+        del self.bbox
+        del self.bm_loops
+
+    def __init__(self, mesh: Mesh) -> None:
+        ''' UVIsland should be selected in UV Editor. '''
+        self._mesh = mesh.name
+
+
+    def init_selection(self, uv_layer: MeshUVLoopLayer) -> None:
+        ''' Needs Object mode. '''
+        return
+        # Cache selected vertices.
+        vert_selection = np.empty(len(uv_layer.vertex_selection))
+        uv_layer.vertex_selection.foreach_get("value", vert_selection)
+        self.vert_sel_indices = {v[0] for v in np.where(vert_selection==True)}
+        self.vert_selection = vert_selection
+
+        # Cache selected edges.
+        edge_selection = np.empty(len(uv_layer.edge_selection))
+        uv_layer.edge_selection.foreach_get("value", edge_selection)
+        self.edge_sel_indices = {v[0] for v in np.where(edge_selection==True)}
+        self.edge_selection = edge_selection
+
+
+    def pin_boundaries(self, enable: bool = True):
+        if not hasattr(self, 'uv_prim_link'):
+            self.calc_boundaries(pin_boundaries=enable)
+        else:
+            bm_loops = self.bm_loops
+            for uv_data in self.uv_prim_link.values():
+                # uv_data.pin_uv = enable
+                bm_loops[uv_data.loop_index][uv_data.loop_uv_accessor].pin_uv = enable
+
+
+    def calc_boundaries(self, pin_boundaries: bool = False) -> None:
+        bm = self.bm
+
+        # Accessor for BMLoopUV data.
+        loop_uv_accessor = bm.loops.layers.uv.active
+
+        # Sequences.
+        bm_faces: list[BMFace] = bm.faces
+        bm_loops: list[BMLoop] = (l for f in bm_faces for l in f.loops)
+
+        uv_prim_link: dict[int, MeshUVPrimLink] = {}
+        boundary_loop_uvs: list[BoundaryLoopUV] = []
+
+        self.loop_2_vert = {}
+        self.vert_2_loop = {}
+
+        def _edge_is_boundary(edge: BMEdge) -> bool:
+            return edge.select and edge.seam
+
+        def _uvloop_select_pin(loop_uv: BMLoopUV, state: bool, use_pin: bool = False) -> None:
+            loop_uv.select = state
+            # loop_uv.select_edge = state
+            if use_pin:
+                loop_uv.pin_uv = state
+
+        for loop in bm_loops:
+            loop_uv: BMLoopUV = loop[loop_uv_accessor]
+            if not loop_uv.select: # not loop.face.select: # any([edge.select for edge in loop.face.edges]):
+                # Exclude if no selected.
+                continue
+
+            vert: BMVert = loop.vert
+            edge: BMEdge = loop.edge
+
+            '''
+            # Check for linked loops.
+            # If any linked loop, in its UVs, share the same vertex... then, its a border!
+            if edge.seam:
+                print("Loop", loop.index, "Vert", vert.index, "Edge", edge.index, "UV", loop_uv.uv)
+                for lk_loop in loop.link_loops:
+                    print("\t-> LK Loop", lk_loop.index, "Vert", lk_loop.vert.index, "Edge", lk_loop.edge.index, "UV", lk_loop[loop_uv_accessor].uv)
+                # lk_loop = loop.link_loop_next
+                # print("\t-> LK Loop Next", lk_loop.index, "Vert", lk_loop.vert.index, "Edge", lk_loop.edge.index, "UV", lk_loop[loop_uv_accessor].uv)
+                # lk_loop = loop.link_loop_prev
+                # print("\t-> LK Loop Prev", lk_loop.index, "Vert", lk_loop.vert.index, "Edge", lk_loop.edge.index, "UV", lk_loop[loop_uv_accessor].uv)
+                # lk_loop = loop.link_loop_radial_next
+                # print("\t-> LK Loop Radial Next", lk_loop.index, "Vert", lk_loop.vert.index, "Edge", lk_loop.edge.index, "UV", lk_loop[loop_uv_accessor].uv)
+                # lk_loop = loop.link_loop_radial_prev
+                # print("\t-> LK Loop Radial Prev", lk_loop.index, "Vert", lk_loop.vert.index, "Edge", lk_loop.edge.index, "UV", lk_loop[loop_uv_accessor].uv)
+            '''
+
+            is_boundary = edge.seam # _edge_is_boundary(edge)
+            _uvloop_select_pin(loop_uv, state=is_boundary, use_pin=pin_boundaries)
+
+            uv_prim_link[loop.index] = MeshUVPrimLink(
+                bm,
+                loop_uv_accessor,
+                loop_index=loop.index,
+                face_index=loop.face.index,
+                vertex_index=vert.index,
+                edge_index=edge.index,
+                is_boundary=is_boundary
+            )
+
+            self.loop_2_vert[loop.index] = vert.index
+            self.vert_2_loop[vert.index] = loop.index
+
+            if is_boundary:
+                bloop_uv = BoundaryLoopUV(loop_uv_accessor, loop)
+                boundary_loop_uvs.append(bloop_uv)
+
+        self.uv_prim_link = uv_prim_link
+        self.boundary_loop_uvs = boundary_loop_uvs
+
+        # print("BOUNDARY VERTICES:")
+        # for bound_loop in boundary_loop_uvs:
+        #     print("\t- ", bound_loop.debug_dict)
+
+        self.calc_bbox()
+
+
+    def calc_bbox(self):
+        boundary_loop_uvs: list[BoundaryLoopUV] = self.boundary_loop_uvs
+
+        ''' Bounding Box. '''
+        # Get min and max to determine the bounds of the cage.
+        min_u_bvert = min(boundary_loop_uvs, key=lambda x: x.uv[0])
+        min_v_bvert = min(boundary_loop_uvs, key=lambda x: x.uv[1])
+        max_u_bvert = max(boundary_loop_uvs, key=lambda x: x.uv[0])
+        max_v_bvert = max(boundary_loop_uvs, key=lambda x: x.uv[1])
+
+        min_u = min_u_bvert.uv[0]
+        min_v = min_v_bvert.uv[1]
+        max_u = max_u_bvert.uv[0]
+        max_v = max_v_bvert.uv[1]
+
+        self.bbox = BBOX_2(min_u, max_u, min_v, max_v)
+
+        print("BBOX:\n", self.bbox.__dict__)
+
+
+    def select_border(self, borders: set[str]) -> list[list[BMVert], str]:
+        boundary_loop_uvs: list[BoundaryLoopUV] = self.boundary_loop_uvs
+        bbox = self.bbox
+
+        # We create a BVHTree for the bbox points.
+        # Then we use it to get nearest boundary UV coord to each corners.
+        # So we translate that UV coord to the corner coordinate.
+        tree = kdtree.KDTree(len(boundary_loop_uvs))
+        for i, bloop in enumerate(boundary_loop_uvs):
+            tree.insert((*bloop.uv, 0.0), i)
+        tree.balance()
+
+        if not borders.isdisjoint({'TOP', 'LEFT'}):
+            top_left_index      = tree.find((bbox.min_x, bbox.max_y, 0.0))[1]
+            bloop__top_left     = boundary_loop_uvs[top_left_index]
+
+        if not borders.isdisjoint({'BOTTOM', 'LEFT'}):
+            bottom_left_index   = tree.find((bbox.min_x, bbox.min_y, 0.0))[1]
+            bloop__bottom_left  = boundary_loop_uvs[bottom_left_index]
+
+        if not borders.isdisjoint({'BOTTOM', 'RIGHT'}):
+            bottom_right_index  = tree.find((bbox.max_x, bbox.min_y, 0.0))[1]
+            bloop__bottom_right = boundary_loop_uvs[bottom_right_index]
+
+        if not borders.isdisjoint({'TOP', 'RIGHT'}):
+            top_right_index     = tree.find((bbox.max_x, bbox.max_y, 0.0))[1]
+            bloop__top_right    = boundary_loop_uvs[top_right_index]
+
+        del tree
+
+        # Get border vertices by sides.
+        borders: list[list[BMVert], str] = []
+
+        if 'TOP' in borders:
+            # self.top_border
+            borders.append(walk_from_vert_to_vert(boundary_loop_uvs, bloop__top_left, bloop__top_right, 'T'))
+        if 'BOTTOM' in borders:
+            # self.bottom_border
+            borders.append(walk_from_vert_to_vert(boundary_loop_uvs, bloop__bottom_left, bloop__bottom_right, 'B'))
+        if 'LEFT' in borders:
+            # self.left_border
+            borders.append(walk_from_vert_to_vert(boundary_loop_uvs, bloop__bottom_left, bloop__top_left, 'L'))
+        if 'RIGHT' in borders:
+            # self.right_border
+            borders.append(walk_from_vert_to_vert(boundary_loop_uvs, bloop__bottom_right, bloop__top_right, 'R'))
+
+        bpy.ops.uv.select_all(action='DESELECT')
+
+        print(
+            "BORDERS TO SELECT:\n", borders
+        )
+
+        for loop_uvs in borders:
+            for loop_uv in loop_uvs:
+                loop_uv.select = True
+
+        return borders
+
+
+    def straighten_borders(self, method: str = 'MIN_MAX'):
+        '''
+            Methods: {'MIN_MAX', 'AVERAGE'}
+        '''
+        boundary_loop_uvs: list[BoundaryLoopUV] = self.boundary_loop_uvs
+        bbox = self.bbox
+
+        # We create a BVHTree for the bbox points.
+        # Then we use it to get nearest boundary UV coord to each corners.
+        # So we translate that UV coord to the corner coordinate.
+        tree = kdtree.KDTree(len(boundary_loop_uvs))
+        for i, bloop in enumerate(boundary_loop_uvs):
+            tree.insert((*bloop.uv, 0.0), i)
+        tree.balance()
+
+        '''
+        top_left_candidates_indices      : list(int) = [r[1] for r in tree.find_n((bbox.min_x, bbox.max_y, 0.0), 4)]
+        bottom_left_candidates_indices   : list(int) = [r[1] for r in tree.find_n((bbox.min_x, bbox.min_y, 0.0), 4)]
+        bottom_right_candidates_indices  : list(int) = [r[1] for r in tree.find_n((bbox.max_x, bbox.min_y, 0.0), 4)]
+        top_right_candidates_indices     : list(int) = [r[1] for r in tree.find_n((bbox.max_x, bbox.max_y, 0.0), 4)]
+
+        bloop__top_left = boundary_loop_uvs[top_left_candidates_indices[0]]
+        for top_left_cand in top_left_candidates_indices:
+            bloop: BoundaryLoopUV = boundary_loop_uvs[top_left_cand]
+            edges: list[BMEdge] = bloop.face.edges
+            if len([edge for edge in edges if edge.seam]) == 2:
+                bloop__top_left = bloop
+                break
+
+        bloop__bottom_left = boundary_loop_uvs[bottom_left_candidates_indices[0]]
+        for bottom_left_cand in bottom_left_candidates_indices:
+            bloop: BoundaryLoopUV = boundary_loop_uvs[bottom_left_cand]
+            edges: list[BMEdge] = bloop.face.edges
+            if len([edge for edge in edges if edge.seam]) == 2:
+                bloop__bottom_left = bloop
+                break
+
+        bloop__bottom_right = boundary_loop_uvs[bottom_right_candidates_indices[0]]
+        for bottom_right_cand in bottom_right_candidates_indices:
+            bloop: BoundaryLoopUV = boundary_loop_uvs[bottom_right_cand]
+            edges: list[BMEdge] = bloop.face.edges
+            if len([edge for edge in edges if edge.seam]) == 2:
+                bloop__bottom_right = bloop
+                break
+
+        bloop__top_right = boundary_loop_uvs[top_right_candidates_indices[0]]
+        for top_right_cand in top_right_candidates_indices:
+            bloop: BoundaryLoopUV = boundary_loop_uvs[top_right_cand]
+            edges: list[BMEdge] = bloop.face.edges
+            if len([edge for edge in edges if edge.seam]) == 2:
+                bloop__top_right = bloop
+                break
+        '''
+
+        top_left_index      : int = tree.find((bbox.min_x, bbox.max_y, 0.0))[1]
+        bottom_left_index   : int = tree.find((bbox.min_x, bbox.min_y, 0.0))[1]
+        bottom_right_index  : int = tree.find((bbox.max_x, bbox.min_y, 0.0))[1]
+        top_right_index     : int = tree.find((bbox.max_x, bbox.max_y, 0.0))[1]
+        bloop__top_left     : BoundaryLoopUV = boundary_loop_uvs[top_left_index]
+        bloop__bottom_left  : BoundaryLoopUV = boundary_loop_uvs[bottom_left_index]
+        bloop__bottom_right : BoundaryLoopUV = boundary_loop_uvs[bottom_right_index]
+        bloop__top_right    : BoundaryLoopUV = boundary_loop_uvs[top_right_index]
+
+        # Get border vertices by sides.
+        borders: tuple[tuple[list[BoundaryLoopUV], str]] = (
+            # self.top_border
+            (walk_from_vert_to_vert(self.bm_loops, boundary_loop_uvs, bloop__top_left, bloop__top_right, 'T'), 'T', 'Y'),
+            # self.bottom_border
+            (walk_from_vert_to_vert(self.bm_loops, boundary_loop_uvs, bloop__bottom_left, bloop__bottom_right, 'B'), 'B', 'Y'),
+            # self.left_border
+            (walk_from_vert_to_vert(self.bm_loops, boundary_loop_uvs, bloop__bottom_left, bloop__top_left, 'L'), 'L', 'X'),
+            # self.right_border
+            (walk_from_vert_to_vert(self.bm_loops, boundary_loop_uvs, bloop__bottom_right, bloop__top_right, 'R'), 'R', 'X'),
+        )
+
+        print("\nBORDERS:")
+        print("Top Border:")
+        for bloop_uv in borders[0][0]:
+            print("\t-", bloop_uv.debug_dict)
+        print("Bottom Border:")
+        for bloop_uv in borders[1][0]:
+            print("\t-", bloop_uv.debug_dict)
+        print("Left Border:")
+        for bloop_uv in borders[2][0]:
+            print("\t-", bloop_uv.debug_dict)
+        print("Right Border:")
+        for bloop_uv in borders[3][0]:
+            print("\t-", bloop_uv.debug_dict)
+
+        print("\nCORNERS:")
+        print("\t- Top-Left:", bloop__top_left.debug_dict)
+        print("\t- Bottom-Left:", bloop__bottom_left.debug_dict)
+        print("\t- Bottom-Right:", bloop__bottom_right.debug_dict)
+        print("\t- Top-Right:", bloop__top_right.debug_dict)
+
+        if method == 'AVERAGE':
+            for (bloop_uvs, border_id, align_axis) in borders:
+                average_h = 0.0
+                for bloop_uv in bloop_uvs:
+                    if align_axis == 'X':
+                        average_h += bloop_uv.uv.x
+                    else:
+                        average_h += bloop_uv.uv.y
+
+                average_h /= len(bloop_uvs)
+                for bloop_uv in bloop_uvs:
+                    if align_axis == 'X':
+                        bloop_uv.loop_uv.uv.x = average_h
+                    else:
+                        bloop_uv.loop_uv.uv.y = average_h
+
+        elif method == 'MIN_MAX':
+            for (bloop_uvs, border_id, align_axis) in borders:
+                if border_id in {'L', 'B'}:
+                    min_max_func = min
+                else:
+                    min_max_func = max
+                min_max_h = 0.0
+                for bloop_uv in bloop_uvs:
+                    if align_axis == 'X':
+                        min_max_h = min_max_func(bloop_uv.uv.x, min_max_h)
+                    else:
+                        min_max_h = min_max_func(bloop_uv.uv.y, min_max_h)
+
+                for bloop_uv in bloop_uvs:
+                    if align_axis == 'X':
+                        bloop_uv.loop_uv.uv.x = min_max_h
+                    else:
+                        bloop_uv.loop_uv.uv.y = min_max_h
+
+        del tree
+        del borders
+
+
+    def unwrap(self, pin_boundaries: bool = False) -> None:
+        if not hasattr(self, 'uv_prim_link'):
+            self.calc_boundaries(pin_boundaries=pin_boundaries)
+
+        bpy.ops.uv.select_all(False, action='DESELECT')
+        bm_loops = self.bm_loops
+        for uv_data in self.uv_prim_link.values():
+            bm_loops[uv_data.loop_index][uv_data.loop_uv_accessor].select = True
+
+        bpy.ops.uv.unwrap(False)
+        bpy.ops.uv.minimize_stretch(False, fill_holes=False, blend=0, iterations=100)
+
+
+
+@Register.OPS.GENERIC
+class StraightenUVIsland:
+    label = "Straighten UV Island"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    method: EnumProperty(
+        name="Select",
+        items=(
+            ('MIN_MAX', "Min Max", ""),
+            ('AVERAGE', "Average", "")
+        ),
+        default='MIN_MAX'
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.active_object.type == 'MESH' and context.active_object.mode == 'EDIT'
+
+    def execute(self, context):
+        ''' Requires a user selection. '''
+
+        # Check if UV Editor is active
+        if context.area.type != 'IMAGE_EDITOR':
+            self.report({'ERROR'}, "UV Editor is not active")
+            return {'CANCELLED'}
+
+        # Get the selected UV island
+        # bpy.ops.uv.select_linked_pick(deselect=False)
+
+
+        mesh: Mesh = context.active_object.data
+        with UVIslandData(mesh) as uv_island:
+            uv_island.straighten_borders(method='MIN_MAX')
+            uv_island.unwrap()
+
+        return {'FINISHED'}
+
+
+@Register.OPS.GENERIC
+class SelectUVIslandBorder:
+    label = "Select UV Island Border"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    select_option: EnumProperty(
+        name="Select",
+        items=(
+            ('RIGHT', "Right", ""),
+            ('LEFT', "Left", ""),
+            ('TOP', "Top", ""),
+            ('BOTTOM', "Bottom", "")
+        ),
+        default={'TOP', 'BOTTOM'},
+        options={'ENUM_FLAG'}
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return context.active_object and context.active_object.type == 'MESH' and context.active_object.mode == 'EDIT' and context.area.type == 'IMAGE_EDITOR'
+
+    def execute(self, context):
+        with UVIslandData(context.active_object.data) as uv_island:
+            uv_island.select_border(set(self.select_option) if isinstance(self.select_option, str) else self.select_option)
+
+        return {'FINISHED'}
+
+
+def menu_func(self, context):
+    self.layout.operator(StraightenUVIsland.bl_idname)
+    self.layout.operator(SelectUVIslandBorder.bl_idname)
+
+def register():
+    bpy.types.IMAGE_MT_uvs.append(menu_func)
+
+def unregister():
+    bpy.types.IMAGE_MT_uvs.remove(menu_func)

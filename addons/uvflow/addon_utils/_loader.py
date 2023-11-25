@@ -44,9 +44,10 @@ def cleanse_modules():
     global modules
 
     sys_modules = sys.modules
-    for module in modules:
-        if module in sys_modules:
-            del sys.modules[module.__name__]
+    sorted_addon_modules = sorted([module.__name__ for module in modules])
+    for module_name in sorted_addon_modules:
+        del sys_modules[module_name]
+
 
 def register_modules():
     global registered
@@ -68,9 +69,13 @@ def unregister_modules():
     global registered
     if not registered:
         return
+
     for module in modules:
         if hasattr(module, "unregister"):
             module.unregister()
+        if module.__name__ == __name__:
+            continue
+
     registered = False
 
 

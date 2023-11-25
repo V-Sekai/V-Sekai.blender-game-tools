@@ -1,7 +1,7 @@
 from uvflow.addon_utils import Register
 from uvflow.props.mesh import MeshProps
 from uvflow.prefs import UVFLOW_Preferences
-from uvflow.addon_utils.utils.mode import CM_ModeToggle
+from uvflow.utils.mode import CM_ModeToggle
 from uvflow.tool.attributes import save_attributes, apply_attributes
 from uvflow.operators.op_geo_overlay import set_seam_props
 from uvflow.operators.op_checker import update_material_uvmap

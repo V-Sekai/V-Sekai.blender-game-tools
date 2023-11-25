@@ -5,6 +5,9 @@ from uvflow.addon_utils import Register, Property
 from bpy.types import UILayout, Context
 from uvflow.operators.op_checker import refresh_checker
 from uvflow.operators.op_geo_overlay import UpdateGeoOverlays, set_seam_color
+from uvflow.debug.pg import UVEditorDebugOptions
+from uvflow.utils.ui_layout import draw_section, draw_section_h
+
 
 def update_pref(context, func):
     preference_area = context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES'
@@ -13,6 +16,9 @@ def update_pref(context, func):
 
 
 class UVFLOW_Preferences:
+    ''' Development Settings. '''
+    uv_editor_debug: Property.POINTER(UVEditorDebugOptions)
+
     ''' UV Editor Settings. '''
     uv_editor_alignment: Property.ENUM(
         name="Toggle",
@@ -27,15 +33,15 @@ class UVFLOW_Preferences:
 
     ''' UVMap Settings. '''
     use_seam_layers: Property.BOOL(
-        name="Seams Per UV Map", 
-        default=True, 
+        name="Seams Per UV Map",
+        default=True,
         description="Save different seams for each UV map"
     )
 
-    ''' Overlay Settings. ''' 
+    ''' Overlay Settings. '''
     use_overlays: Property.BOOL(
         name="Use Overlays",
-        default=False, 
+        default=False,
         update=lambda self, ctx: update_pref(ctx, UpdateGeoOverlays.run) or refresh_checker(ctx)
     )
     checker_pattern: Property.ENUM(
@@ -157,10 +163,19 @@ class UVFLOW_Preferences:
         ),
         default="ANGLE_BASED"
     )
-    alignment: Property.BOOL(
-        name="Auto Align",
-        default=False,
+    alignment_obj: Property.BOOL(
+        name="Align Bounds",
+        default=True,
         description="Aligns the islands to the U or V axis after unwrapping"
+    )
+    alignment_edit: Property.ENUM(
+        name="Align",
+        items=(
+            ('NONE', 'None', 'No alignment is applied to the island after unwrapping'),
+            ('BOUNDS', 'Bounding Box', "Each island's bounding box is aligned after unwrapping. Best of unwrapping lots of islands at once"),
+            ('EDGE', 'Active Edge', "Any island connected to the active edge is aligned based on the active edge. Best when unwrapping one island at a time")
+        ),
+        default='BOUNDS'
     )
     fill_holes: Property.BOOL(
         name="Fill Holes",
@@ -189,7 +204,7 @@ class UVFLOW_Preferences:
     )
     use_sharp: Property.BOOL(
         name="Sharp",
-        default=True,
+        default=False,
     )
     use_bevel: Property.BOOL(
         name="Bevel",
@@ -229,21 +244,30 @@ class UVFLOW_Preferences:
     )
     create_seams: Property.BOOL(
         name="Mark Seams",
-        description="Marks any split edges as seams. This does not need to be enabled in order for the above options to act like seams",
+        description="Marks any split edges as seams while unwrapping. This does not need to be enabled in order for the below options to act like seams",
         default=False
     )
 
     ''' Pack Settings. '''
     use_auto_pack: Property.BOOL(default=False, name="Auto Pack")
 
-    pack_includes: Property.ENUM(
+    edit_pack_includes: Property.ENUM(
         name="Include",
         items=(
-            ("SELECTED", "Selected Faces", "Packs only the selected faces"),
+            ("FACES", "Selected Faces", "Packs only the selected faces"),
             ("OBJECT", "Selected Objects", "Packs all faces of any object the selection is a part of"),
-            ("MATERIAL", "Selected Materials", "Packs all faces of all objects belonging to the materials included in the selection")
+            ("SELECT_MATERIAL", "Selected Materials", "Packs all faces of all objects belonging to the materials included in the selection")
         ),
-        default="SELECTED"
+        default="FACES"
+    )
+    object_pack_includes: Property.ENUM(
+        name="Include",
+        items=(
+            ("ACTIVE_MATERIAL", "Active Material", "Packs faces of all objects assigned to the currently active material"),
+            ("OBJECT", "Selected Objects", "Packs all faces of all selected objects"),
+            ("OBJECT_MATERIAL", "Selected Materials", "Packs all faces of all materials belonging to the selection")
+        ),
+        default="OBJECT"
     )
     pack_together: Property.ENUM(
         name="Group",
@@ -265,6 +289,7 @@ class UVFLOW_Preferences:
     )
     average_scale: Property.BOOL(
         name="Average Scale",
+        description='Average island scale before packing for uniform texel density',
         default=True
     )
     rotation: Property.ENUM(
@@ -322,26 +347,55 @@ class UVFLOW_Preferences:
     )
 
     ''' Dropdown Menus '''
-    show_overlay_options: Property.BOOL(
-        name = 'Overlay Defaults',
-        default = True
-    )
     show_editor_options: Property.BOOL(
-        name = 'UV Editor Defaults',
+        name = 'UV Editor',
+        default=False
+    )
+    show_uv_map_options: Property.BOOL(
+        name = 'UV Maps',
+        default=False
+    )
+    show_overlay_options: Property.BOOL(
+        name = 'Overlays',
         default = False
     )
     show_uvmap_options: Property.BOOL(
-        name = 'UV Map Defaults',
+        name = 'UV Maps',
         default = False
     )
     show_unwrap_options: Property.BOOL(
-        name = 'Unwrapping Defaults',
+        name = 'Unwrapping',
         default = False
     )
     show_packing_options: Property.BOOL(
-        name = 'Packing Defaults',
+        name = 'Packing',
         default = False
     )
+    show_developer_options: Property.BOOL(
+        name = 'Developer Extras',
+        default = False
+    )
+    show_cutuv_tool_options: Property.BOOL(
+        name = 'CutUV Tool Options',
+        default = False
+    )
+
+    # ----------------------------------------------------------------
+    # TOOL ADDITIONAL SETTINGS.
+
+    use_frame_select_uvs: Property.BOOL(
+        name="Frame Selection",
+        description="When double clicking on a face:\nFrame the selected UVs.\n(Only if a UV Editor is opened)",
+        default=True
+    )
+
+    use_sync_select_uvs: Property.BOOL(
+        name="Sync Selection (View 3D -> UV Editor)",
+        description="When double clicking on a face:\nPropagate the 3D viewport selection to the UV editor\n(Only if a UV Editor is opened)",
+        default=True
+    )
+
+    # ----------------------------------------------------------------
 
     @property
     def use_split(self) -> bool:
@@ -350,24 +404,44 @@ class UVFLOW_Preferences:
     @staticmethod
     def get_prefs(context: Context) -> 'UVFLOW_Preferences':
         return context.preferences.addons[__package__].preferences
-    
+
     def dropdown_icon(self, is_showing):
-        return "TRIA_RIGHT" if is_showing else "TRIA_DOWN"
-    
-    def draw_unwrap_prefs(self, layout):
+        return "DOWNARROW_HLT" if is_showing else "RIGHTARROW_THIN"
+
+    def draw_auto_unwrap_prefs(self, layout, context: Context):
         col = layout.column()
         col.use_property_split=True
         col.use_property_decorate=False
-        col.label(text='Unwrap')
+        col.prop(self, 'use_auto_unwrap')
+
+    def draw_unwrap_prefs(self, layout, context: Context):
+        col = layout.column()
+        col.use_property_split=True
+        col.use_property_decorate=False
+        # col.label(text='Unwrap')
         col.prop(self, 'unwrap_method')
-        col.prop(self, 'alignment')
+        if context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES':
+            col.prop(self, 'alignment_obj', text='Object Mode Alignment')
+            col.prop(self, 'alignment_edit', text='Edit Mode Alignment')
+        else:
+            if context.mode == 'OBJECT':
+                col.prop(self, 'alignment_obj')
+            else:
+                col.prop(self, 'alignment_edit')
         col.prop(self, 'fill_holes')
         # col.prop(prefs, 'symmetrize')
 
+    def draw_split_seams_prefs(self, layout):
+        col = layout.column()
+        col.use_property_split=True
+        col.use_property_decorate=False
+        col.label(text='Split')
+        col.prop(self, 'create_seams')
+
+    def draw_split_prefs(self, layout):
         split = layout.column()
         split.use_property_split=True
         split.use_property_decorate=False
-        split.label(text='Split')
         _row = split.row(align=True, heading="Angle")
         _row.prop(self, 'use_angle', text='')
         _row.prop(self, 'edge_angle', text='')
@@ -379,9 +453,8 @@ class UVFLOW_Preferences:
         _row.prop(self, 'edge_crease_weight', text='')
         split.prop(self, 'use_sharp', text="Sharp")
         split.prop(self, 'use_freestyle_mark', text='Freestyle Mark')
-        split.separator()
-        split.prop(self, 'create_seams')
 
+    def draw_unwrap_apply_prefs(self, layout):
         apply = layout.column()
         apply.use_property_split=True
         apply.use_property_decorate=False
@@ -390,21 +463,29 @@ class UVFLOW_Preferences:
         apply.prop(self, 'use_subdiv')
         apply.prop(self, 'correct_aspect')
 
-        layout.separator()
-    
-    def draw_packing_prefs(self, layout):
+    def draw_packing_prefs(self, layout, context: Context):
         layout.use_property_split=True
         layout.use_property_decorate=False
-        layout.label(text='Pack')
-        layout.prop(self, 'pack_includes')
+        # layout.label(text='Pack')
+        # layout.prop(self, 'use_auto_pack')
+        if context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES':
+            layout.prop(self, 'object_pack_includes', text='Object Mode Include')
+            layout.prop(self, 'edit_pack_includes', text='Edit Mode Include')
+        else:
+            if context.mode == 'OBJECT':
+                layout.prop(self, 'object_pack_includes')
+            else:
+                layout.prop(self, 'edit_pack_includes')
         layout.prop(self, 'pack_together')
         layout.prop(self, 'pack_method')
+        layout.separator()
         layout.label(text='Transform')
         layout.prop(self, 'pack_to')
         layout.prop(self, 'merge_overlapping')
         layout.prop(self, 'lock_pinned')
         layout.prop(self, 'average_scale')
         layout.prop(self, 'rotation')
+        layout.separator()
         margin = layout.column()
         margin.use_property_split=True
         margin.use_property_decorate=False
@@ -413,77 +494,133 @@ class UVFLOW_Preferences:
         layout.row().prop(self, 'margin_method', expand=True)
         layout.separator()
 
-    def draw_seam_prefs(self, layout):
+    def draw_overlay_enable_prefs(self, layout, context: Context):
+        row = layout.row()
+        row.prop(self, 'use_overlays')
+
+    def draw_seam_prefs(self, layout, context: Context):
+        enabled =  self.use_overlays == True or context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES'
         layout.use_property_split=True
         layout.use_property_decorate=False
         layout.label(text='Seams')
         layout.prop(self, 'seam_color')
-        layout.prop(self, 'use_seam_highlight')
+        col = layout.column()
+        col.enabled = enabled
+        col.use_property_split=True
+        col.use_property_decorate=False
+        col.prop(self, 'use_seam_highlight')
         if self.use_seam_highlight:
-            layout.prop(self, 'seam_size')
-            layout.prop(self, 'seam_brightness', slider=True)
+            col.prop(self, 'seam_size')
+            col.prop(self, 'seam_brightness', slider=True)
         layout.separator()
 
-    def draw_texture_prefs(self, layout):
-        layout.use_property_split=True
-        layout.use_property_decorate=False
-        layout.label(text='Checker Texture')
-        layout.prop(self, 'checker_pattern')
+    def draw_texture_prefs(self, layout, context: Context):
+        enabled =  self.use_overlays == True or context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES'
+        col = layout.column()
+        col.enabled = enabled
+        col.use_property_split=True
+        col.use_property_decorate=False
+        col.label(text='Checker Texture')
+        col.prop(self, 'checker_pattern')
         if self.checker_pattern in ['UV_GRID', 'COLOR_GRID']:
-            layout.prop(self, 'checker_custom_resolution')
+            col.prop(self, 'checker_custom_resolution')
         layout.separator()
 
-    def draw_face_overlay_prefs(self, layout):
-        layout.use_property_split=True
-        layout.use_property_decorate=False
-        layout.label(text='UV Info')
-        layout.prop(self, 'face_highlight')
+    def draw_face_overlay_prefs(self, layout, context: Context):
+        enabled =  self.use_overlays == True or context.area.type == 'PREFERENCES' or context.space_data.type == 'PREFERENCES'
+        col = layout.column()
+        col.enabled = enabled
+        col.use_property_split=True
+        col.use_property_decorate=False
+        col.label(text='UV Info')
+        col.prop(self, 'face_highlight')
         if self.face_highlight == 'UDIM':
-            layout.prop(self, 'udim_seed')
+            col.prop(self, 'udim_seed')
         layout.separator()
+
 
     def draw_ui(self, context: Context, layout: UILayout) -> None:
-        general = layout.column()
-        general.use_property_split=True
-        general.use_property_decorate=False
-        general.label(text='UV Editor')
-        general.prop(self, 'uv_editor_alignment')
-        general.separator()
-        general.label(text='UV Maps')
-        general.prop(self, 'use_seam_layers')
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_editor_options', emboss=False, icon = self.dropdown_icon(self.show_editor_options))
+        if self.show_editor_options:
+            box = layout.box()
+            content = box.column()
+            content.use_property_split=True
+            content.use_property_decorate=False
+            content.prop(self, 'uv_editor_alignment')
+            content.label(text='3D View Cut UV Island Select')
+            content.prop(self, 'use_frame_select_uvs', text='Frame-Select UVs')
+            content.prop(self, 'use_sync_select_uvs', text='Sync-Select UVs')
 
-        overlay_box = layout.box()
-        overlay_box.prop(self, 'show_overlay_options', emboss=False, icon = self.dropdown_icon(self.show_overlay_options))
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_uv_map_options', emboss=False, icon = self.dropdown_icon(self.show_uv_map_options))
+        if self.show_uv_map_options:
+            box = layout.box()
+            content = box.column()
+            content.use_property_split=True
+            content.use_property_decorate=False
+            content.prop(self, 'use_seam_layers')
+
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_overlay_options', emboss=False, icon = self.dropdown_icon(self.show_overlay_options))
         if self.show_overlay_options:
-            overlay_box.separator()
+            overlay_box = layout.box()
             content = overlay_box.column()
             content.use_property_split=True
             content.use_property_decorate=False
-            content.prop(self, 'use_overlays')
-            self.draw_seam_prefs(content)
-            self.draw_texture_prefs(content)
-            # self.draw_face_overlay_prefs(content)
+            self.draw_overlay_enable_prefs(content, context)
+            self.draw_seam_prefs(content, context)
+            self.draw_texture_prefs(content, context)
+            # self.draw_face_overlay_prefs(content, context)
 
-        unwrap_box = layout.box()
-        unwrap_box.prop(self, 'show_unwrap_options', emboss=False, icon = self.dropdown_icon(self.show_unwrap_options))
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_unwrap_options', emboss=False, icon = self.dropdown_icon(self.show_unwrap_options))
         if self.show_unwrap_options:
-            unwrap_box.separator()
+            unwrap_box = layout.box()
             content = unwrap_box.column()
             content.use_property_split=True
             content.use_property_decorate=False
             content.prop(self, 'use_auto_unwrap')
-            self.draw_unwrap_prefs(content)            
+            self.draw_unwrap_prefs(content, context)
+            self.draw_split_seams_prefs(content)
+            self.draw_split_prefs(content)
+            self.draw_unwrap_apply_prefs(content)
 
-        packing_box = layout.box()
-        packing_box.prop(self, 'show_packing_options', emboss=False, icon = self.dropdown_icon(self.show_packing_options))
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_packing_options', emboss=False, icon = self.dropdown_icon(self.show_packing_options))
         if self.show_packing_options:
-            packing_box.separator()
+            packing_box = layout.box()
             content = packing_box.column()
             content.use_property_split=True
             content.use_property_decorate=False
-            content.prop(self, 'use_auto_pack')
             content.separator()
-            self.draw_packing_prefs(content)
+            self.draw_packing_prefs(content, context)
+
+        '''
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_cutuv_tool_options', text='CutUV Tool Extras', emboss=False, icon=self.dropdown_icon(self.show_cutuv_tool_options))
+        if self.show_cutuv_tool_options:
+            content = layout.column()
+            _sub = draw_section(content, 'Double-Clicking a Face will...', icon='FACE_MAPS')
+            _sub.prop(self, 'use_frame_select_uvs', text='Frame-Select UVs')
+            _sub.prop(self, 'use_sync_select_uvs', text='Sync-Select UVs')
+        '''
+
+        header = layout.row()
+        header.alignment = 'LEFT'
+        header.prop(self, 'show_developer_options', emboss=False, icon = self.dropdown_icon(self.show_developer_options))
+        if self.show_developer_options:
+            box = layout.box()
+            content = box.column()
+            content.use_property_split=True
+            content.use_property_decorate=False
+            content.prop(self.uv_editor_debug, 'enabled')
 
 
 # Register preferences but preserve the class typing.

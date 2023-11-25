@@ -22,8 +22,8 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 bl_info = {
   "name": "UV Flow",
   "author": "Orange Turbine, Juan Fran Matheu, Jonathan Lampel",
-  "version": (0, 9, 3),
-  "blender": (3, 6, 1),
+  "version": (0, 9, 8),
+  "blender": (3, 6, 5),
   "location": "3D View > Mesh Edit Mode > Toolbar",
   "description": "Tools for unwrapping meshes at warp speed",
   "warning": "Beta",
@@ -40,7 +40,7 @@ if bpy.app.background:
   def unregister():
     pass
 else:
-  from uvflow.addon_utils import init_modules
+  from uvflow.addon_utils import init_modules 
   init_modules()
 
   def register():

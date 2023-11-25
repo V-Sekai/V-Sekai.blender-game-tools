@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple, Union
+from time import time
 
 import bpy
 from bpy.types import Operator, OperatorProperties, UILayout, Context, Event
@@ -7,8 +8,8 @@ from bpy.types import Operator, OperatorProperties, UILayout, Context, Event
 from uvflow.globals import print_debug
 from .event import EventType, EventValue, Mouse
 from .tools import TOOL_ACTION_TYPES
-from ..utils.raycast import RaycastInfo, BVHTreeRaycastInfo
-from ..utils.cursor import Cursor
+from ...utils.raycast import RaycastInfo, BVHTreeRaycastInfo
+from ...utils.cursor import Cursor
 from .state_machine import EventStateMachine, EventStateMachineNode, EventStateMachineAction
 
 
@@ -117,8 +118,9 @@ class BaseOperator: # (Operator):
 
     def execute(self, context: 'Context') -> OpsReturn:
         print_debug("\n* OPS - " + self.ori_cls.__name__ + "::execute()::PRE")
+        start_time = time()
         self.action(context)
-        print_debug("\n* OPS - " + self.ori_cls.__name__ + "::execute()::POST")
+        print_debug("\n* OPS - " + self.ori_cls.__name__ + "::execute()::POST" + "-> %.4f seconds" % (time()-start_time))
         return OpsReturn.FINISH
 
 
@@ -341,6 +343,8 @@ class ToolActionModalOperator(BaseModalOperator):
         if res := self._modal_start(context, event):
             if res == -1:
                 return OpsReturn.CANCEL
+            if isinstance(res, set):
+                return res
         if not context.window_manager.modal_handler_add(self):
             return OpsReturn.CANCEL
         return OpsReturn.RUN

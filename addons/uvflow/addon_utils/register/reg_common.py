@@ -25,11 +25,11 @@ class RegisterFactory:
 
 class BlenderTypes(Enum):
     ''' Supported types. '''
-    PREFERENCES = auto()
     OPERATOR = auto()
     MACRO = auto()
     INTERFACE = auto() # Panel, Menu, PieMenu...
     PROPERTY_GROUP = auto()
+    PREFERENCES = auto()
 
     def get_classes(self) -> List[Type]:
         return classes_per_type[self]

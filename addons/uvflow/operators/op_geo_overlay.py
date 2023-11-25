@@ -20,8 +20,8 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 '''
 
 from uvflow.addon_utils import Register, Property
-from uvflow.addon_utils.utils.append import append_path
-from uvflow.addon_utils.utils.mode import CM_ModeToggle
+from uvflow.utils.append import append_path
+from uvflow.utils.mode import CM_ModeToggle
 
 import bpy
 from bpy.types import Context, Object

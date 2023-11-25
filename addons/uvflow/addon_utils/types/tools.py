@@ -2,7 +2,7 @@ from typing import Union, Callable
 import math
 
 from .event import EventType, EventValue, Mouse
-from ..utils.raycast import BVHTreeRaycastInfo
+from ...utils.raycast import BVHTreeRaycastInfo
 
 from bpy.types import Context, Event, Operator
 
@@ -75,7 +75,7 @@ class ToolAction:
 
         if toggle_modifier:
             mod_count: int = len(toggle_modifier)
-            for n in range(0, math.factorial(mod_count)*2):
+            for n in range(0, math.factorial(mod_count) * 2):
                 comb_bin =f'{n:0{mod_count}b}' # "{0:b}".format(n)
                 modifier_states = {}
                 for i in range(0, len(comb_bin)):

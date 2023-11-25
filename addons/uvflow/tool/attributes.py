@@ -22,7 +22,7 @@ along with this program; if not, see <https://www.gnu.org/licenses>.
 import bpy
 from bpy.types import Context, Mesh, BoolAttribute, bpy_prop_collection
 
-from uvflow.addon_utils.utils.mode import CM_ModeToggle
+from uvflow.utils.mode import CM_ModeToggle
 from uvflow.globals import CM_SkipMeshUpdates, print_debug
 
 

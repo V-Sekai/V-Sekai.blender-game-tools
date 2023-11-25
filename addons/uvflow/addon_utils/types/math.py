@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from mathutils import Vector
 
-from ..utils.math import clamp
+from ...utils.math import clamp
 
 
 class Vector2:

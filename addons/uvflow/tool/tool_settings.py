@@ -1,23 +1,37 @@
 import bpy
+from bl_ui.space_view3d import VIEW3D_PT_active_tool
+
+from dataclasses import dataclass
 
 from uvflow.addon_utils import Register, Property
 from uvflow.prefs import UVFLOW_Preferences
 
 from uvflow.operators.op_pack import UVPack
 from uvflow.operators.op_unwrap import UVUnwrap
-from uvflow.operators.op_editor_management import ToggleUVEditor, ToggleGNEditor, get_gn_editor, get_uv_editor
+from uvflow.operators.op_mark_seams import UVMarkSeams
+from uvflow.operators.op_editor_management import ToggleUVEditor, ToggleGNEditor
 from uvflow.operators.op_viewer import ActivateViewer
+from uvflow.utils.editor_gn import get_gn_editor
+from uvflow.utils.editor_uv import get_uv_editor
+from uvflow.utils.ui_layout import draw_section_panel
+from uvflow.props.temp import TempProps
 
 from bpy.types import Context, UILayout
 from bl_ui.properties_data_mesh import DATA_PT_uv_texture
 
 
+
+@dataclass
+class DummyPanel:
+    layout: UILayout
+
+
 @Register.UI.POPOVER
 class UVFlowTS_UVMapPopover:
+    label = 'UV Maps'
+
     def draw_ui(self, context: Context, layout: UILayout) -> None:
         ''' Here draw the Unwrap options. '''
-        prefs = UVFLOW_Preferences.get_prefs(context)
-
         class HackDataPTContext:
             def __getattribute__(self, attr: str):
                 # FIX -> AttributeError: 'Context' object has no attribute 'mesh'.
@@ -25,46 +39,69 @@ class UVFlowTS_UVMapPopover:
                     return context.object.data
                 return getattr(context, attr)
 
-        DATA_PT_uv_texture.draw(self, HackDataPTContext())
-
-        '''
-        options_row = layout.row()
-        options_row.prop(prefs, 'use_seam_layers')
-        '''
-
+        if layout is None:
+            return
+        DATA_PT_uv_texture.draw(DummyPanel(layout), HackDataPTContext())
 
 
 @Register.UI.POPOVER
 class UVFlowTS_UnwrapPopover:
+    label = 'Unwrap'
+
     def draw_ui(self, context: Context, layout: UILayout) -> None:
         ''' Here draw the Unwrap options. '''
+        if layout is None:
+            return
+
         prefs = UVFLOW_Preferences.get_prefs(context)
         content = layout.column()
-        UVFLOW_Preferences.draw_unwrap_prefs(prefs, content)
+        UVFLOW_Preferences.draw_auto_unwrap_prefs(prefs, content, context)
+        UVFLOW_Preferences.draw_unwrap_prefs(prefs, content, context)
+        UVFLOW_Preferences.draw_split_seams_prefs(prefs, content)
+        UVFLOW_Preferences.draw_split_prefs(prefs, content)
+        content.separator()
+        row = content.row()
+        UVMarkSeams.draw_in_layout(row,  label='Mark Split', op_props={'use_seam':True})
+        UVMarkSeams.draw_in_layout(row, label='Clear Split', op_props={'use_seam':False})
+        UVFLOW_Preferences.draw_unwrap_apply_prefs(prefs, content)
         content.separator()
         UVUnwrap.draw_in_layout(content, label='Unwrap UVs')
 
 
 @Register.UI.POPOVER
 class UVFlowTS_PackPopover:
+    label = 'Pack'
+
     def draw_ui(self, context: Context, layout: UILayout) -> None:
         ''' Here draw the Pack options. '''
+        if layout is None:
+            return
+
         prefs = UVFLOW_Preferences.get_prefs(context)
         content = layout.column()
-        UVFLOW_Preferences.draw_packing_prefs(prefs, content)
+        UVFLOW_Preferences.draw_packing_prefs(prefs, content, context)
         content.separator()
         UVPack.draw_in_layout(content, label='Pack UVs')
 
 
 @Register.UI.POPOVER
 class UVFlowTS_OverlayPopover:
+    label = 'UV Overlays'
+
     def draw_ui(self, context: Context, layout: UILayout) -> None:
         ''' Here draw the Checker Texture options. '''
+        if layout is None:
+            return
+
         prefs = UVFLOW_Preferences.get_prefs(context)
         content = layout.column()
-        UVFLOW_Preferences.draw_seam_prefs(prefs, content)
-        UVFLOW_Preferences.draw_texture_prefs(prefs, content)
-        # UVFLOW_Preferences.draw_face_overlay_prefs(prefs, content)
+        content.use_property_split=True
+        content.use_property_decorate=False
+        UVFLOW_Preferences.draw_overlay_enable_prefs(prefs, content, context)
+        UVFLOW_Preferences.draw_seam_prefs(prefs, content, context)
+        content.separator()
+        UVFLOW_Preferences.draw_texture_prefs(prefs, content, context)
+        # UVFLOW_Preferences.draw_face_overlay_prefs(prefs, content, context)
 
         if prefs.face_highlight == 'NONE':
             return
@@ -85,7 +122,12 @@ class UVFlowTS_OverlayPopover:
 
 @Register.UI.POPOVER
 class UVFlowTS_InfoPopover:
+    label = 'Info'
+
     def draw_ui(self, context: Context, layout: UILayout) -> None:
+        if layout is None:
+            return
+
         content = layout.column()
         content.use_property_split=True
         content.use_property_decorate=False
@@ -132,46 +174,78 @@ class UVFlowToolSettings:
 
     @classmethod
     def draw(cls, context: Context, layout: UILayout):
+        use_popover = context.region.type == 'TOOL_HEADER'
+        if not use_popover:
+            dummy_self = DummyPanel(layout)
+        tmp_props = TempProps.get_data(context)
+
         prefs = UVFLOW_Preferences.get_prefs(context)
         ts_data = cls.get_data(context)
 
         ''' UV Editor. '''
         use_uveditor = context.scene.uvflow.uv_editor_enabled and get_uv_editor(context.window) is not None
-        ToggleUVEditor.draw_in_layout(layout, label='UV Editor', icon='UV', depress=use_uveditor)
+        if use_popover:
+            ToggleUVEditor.draw_in_layout(layout, label='UV Editor', icon='UV', depress=use_uveditor)
+        else:
+            ToggleUVEditor.draw_in_layout(layout, label='Toggle UV Editor', icon='UV', depress=use_uveditor)
+            layout.separator()
+
+        ''' Sidebar Subdiv. '''
+        modifiers = [x for x in context.object.modifiers]
+        if not use_popover and any(x.type =='SUBSURF' for x in modifiers):
+            layout.prop(modifiers[-1], 'uv_smooth', text="Subdiv UVs")
+            layout.separator()
 
         ''' UV MAP. '''
-        icon = 'GROUP_UVS'
         act_uvmap = context.object.data.uv_layers.active
-        UVFlowTS_UVMapPopover.draw_in_layout(layout, label=act_uvmap.name if act_uvmap else 'UV Map', icon='GROUP_UVS')
+        if use_popover:
+            UVFlowTS_UVMapPopover.draw_in_layout(layout, label=act_uvmap.name if act_uvmap else 'UV Maps', icon='GROUP_UVS')
+        else:
+            UVFlowTS_UVMapPopover.draw_ui(dummy_self, context, draw_section_panel(
+                (tmp_props, 'show_uvmap_section'), layout, 'UV Maps')
+            )
 
         ''' Unwrap. '''
         row = layout.row(align=True)
-        icon = 'REC'
-        row.prop(prefs, 'use_auto_unwrap', text="", toggle=True, icon=icon)
-        UVFlowTS_UnwrapPopover.draw_in_layout(row, label="Unwrap")
-        UVUnwrap.draw_in_layout(row, icon='TRIA_RIGHT', label='')
+        if use_popover:
+            row.prop(prefs, 'use_auto_unwrap', text="", toggle=True, icon='REC')
+            UVFlowTS_UnwrapPopover.draw_in_layout(row, label="Unwrap")
+            UVUnwrap.draw_in_layout(row, icon='TRIA_RIGHT', label='')
+        else:
+            UVFlowTS_UnwrapPopover.draw_ui(dummy_self, context, draw_section_panel(
+                (tmp_props, 'show_unwrap_section'), layout, 'Unwrap'
+            ))
 
         ''' Pack. '''
         if bpy.app.version > (3, 6, 0):
             row = layout.row(align=True)
-            icon = 'REC'
-            row.prop(prefs, 'use_auto_pack', text="", toggle=True, icon=icon)
-            UVFlowTS_PackPopover.draw_in_layout(row, label="Pack")
-            UVPack.draw_in_layout(row, icon='TRIA_RIGHT', label='')
+            if use_popover:
+                # row.prop(prefs, 'use_auto_pack', text="", toggle=True, icon='REC')
+                UVFlowTS_PackPopover.draw_in_layout(row, label="Pack")
+                UVPack.draw_in_layout(row, icon='TRIA_RIGHT', label='')
+            else:
+                UVFlowTS_PackPopover.draw_ui(dummy_self, context, draw_section_panel(
+                    (tmp_props, 'show_pack_section'), layout, 'Pack')
+                )
 
         ''' Overlays. '''
         row = layout.row(align=True)
-        icon = 'TEXTURE'
-        row.prop(prefs, 'use_overlays', text="", toggle=True, icon=icon)
-        UVFlowTS_OverlayPopover.draw_in_layout(row, label="UV Overlays")
+        if use_popover:
+            row.prop(prefs, 'use_overlays', text="", toggle=True, icon='TEXTURE')
+            UVFlowTS_OverlayPopover.draw_in_layout(row, label="UV Overlays")
+        else:
+            UVFlowTS_OverlayPopover.draw_ui(dummy_self, context, draw_section_panel(
+                (tmp_props, 'show_overlays_section'), layout, 'UV Overlays')
+            )
 
-        ''' Subdiv. '''
-        modifiers = [x for x in context.object.modifiers]
-        if any(x.type =='SUBSURF' for x in modifiers):
-            row = layout.row(align=True)
-            icon = 'MOD_SUBSURF'
-            row.prop(modifiers[-1], 'uv_smooth')
+        ''' Header Subdiv. '''
+        if use_popover and any(x.type =='SUBSURF' for x in modifiers):
+            layout.prop(modifiers[-1], 'uv_smooth', text='Subdiv')
 
         ''' Help '''
-        UVFlowTS_InfoPopover.draw_in_layout(layout, label="", icon='INFO')
-
+        if use_popover:
+            UVFlowTS_InfoPopover.draw_in_layout(layout, label="", icon='INFO')
+        else:
+            UVFlowTS_InfoPopover.draw_ui(dummy_self, context, draw_section_panel(
+                (tmp_props, 'show_info_section'), layout, 'Tool Info')
+            )

@@ -31,19 +31,10 @@ attribute_node_name = 'UV Flow Map'
 
 
 def enable_shading(context: Context, objects: List[Object], auto: bool = False):
-    if hasattr(context.space_data, 'shading'):
-        shading = context.space_data.shading.type
-        is_wire = shading == 'WIREFRAME'
-        color = context.space_data.shading.color_type
-
-        if is_wire: context.space_data.shading.type = 'SOLID'
-        if color != 'TEXTURE':
-            context.scene['color_type'] = color
-            context.space_data.shading.color_type = 'TEXTURE'
-        if is_wire: context.space_data.shading.type = 'WIREFRAME'
-
     for obj in context.scene.objects:
-        if obj in objects and obj.type in ['MESH', 'CURVE']:
+        if obj.display_type in ['WIRE', 'BOUNDS']:
+            pass
+        elif obj in objects and obj.type in ['MESH', 'CURVE', 'SURFACE']:
             if not obj.get('prev_display_type'):
                 obj['prev_display_type'] = obj.display_type
             obj.display_type = 'TEXTURED'
@@ -60,7 +51,19 @@ def enable_shading(context: Context, objects: List[Object], auto: bool = False):
             obj.type in ['MESH', 'CURVE']):
                 if not obj.get('prev_display_type'):
                     obj['prev_display_type'] = obj.display_type
-                obj.display_type = 'SOLID'
+                if context.space_data.shading.color_type != 'TEXTURE':
+                    obj.display_type = 'SOLID'
+                    
+    if hasattr(context.space_data, 'shading'):
+        shading = context.space_data.shading.type
+        is_wire = shading == 'WIREFRAME'
+        color = context.space_data.shading.color_type
+
+        if is_wire: context.space_data.shading.type = 'SOLID'
+        if color != 'TEXTURE':
+            context.scene['color_type'] = color
+            context.space_data.shading.color_type = 'TEXTURE'
+        if is_wire: context.space_data.shading.type = 'WIREFRAME'
 
 
 def disable_shading(context: Context, objects: List[Object], auto: bool = False):
@@ -190,7 +193,7 @@ def setup_nodes(context: Context, obj: Object, slot: MaterialSlot, tex: Texture)
         map.hide = True
         map.location = [output_node.location[0], output_node.location[1] + 250]
         links.new(map.outputs['Vector'], image_tex.inputs[0])
-    if obj.data.uv_layers.active:
+    if hasattr(obj.data, 'uv_layers') and obj.data.uv_layers.active:
         map.attribute_name = obj.data.uv_layers.active.name
 
 
@@ -264,17 +267,26 @@ def refresh_checker(context: Context):
 @Register.OPS.GENERIC
 class ToggleUvCheckerMaterial:
     label: str = 'Toggle UV Checkers'
+    bl_description: str = 'Toggle a UV checker texture on the selected objects. This also sets the viewport color and display of other objects, so toggle the checker off when finished to revert to previous settings'
     bl_options = {'REGISTER', 'UNDO'}
 
-    enable: Property.BOOL()
+    enable: Property.BOOL(name="Enabled")
     auto: Property.BOOL()
 
     def draw(self, context: Context):
+        from uvflow.prefs import UVFLOW_Preferences
+        prefs = UVFLOW_Preferences.get_prefs(context)
+        self.layout.use_property_split=True
+        self.layout.use_property_decorate=False
+        self.layout.prop(prefs, 'checker_pattern')
+        if prefs.checker_pattern in ['UV_GRID', 'COLOR_GRID']:
+            self.layout.prop(prefs, 'checker_custom_resolution')
         self.layout.prop(self, 'enable')
 
     def action(self, context: Context):
         objects = [ob for ob in context.view_layer.objects if (
-            ob.mode == 'EDIT' or ob.select_get() == True or (self.auto and context.active_object == ob)
+            ob.type in ['MESH', 'CURVE', 'SURFACE'] and
+            (ob.mode == 'EDIT' or ob.select_get() == True or (self.auto and context.active_object == ob))
         )]
         if objects:
             if context.active_object not in objects:

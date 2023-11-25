@@ -3,50 +3,16 @@ from bpy.types import Window, Area
 
 from uvflow.addon_utils import Register
 from uvflow.addon_utils.types import BBOX_2
-from uvflow.addon_utils.utils.cursor import Cursor
-
+from uvflow.utils.cursor import Cursor
+from uvflow.utils.editor_uv import get_uv_editor
+from uvflow.utils.editor_gn import get_gn_editor, create_gn_editor, ensure_gn_editor
 from bpy.types import Context
-
-
-def get_gn_editor(wnd: Window) -> Area or None:
-    for _area in wnd.screen.areas:
-        if _area.type == 'NODE_EDITOR' and _area.ui_type == 'GeometryNodeTree':
-            print("Get GN Editor")
-            return _area
-    return None
-
-
-def get_uv_editor(wnd: Window) -> Area or None:
-    for _area in wnd.screen.areas:
-        if _area.type == 'IMAGE_EDITOR' and _area.ui_type == 'UV':
-            return _area
-    return None
-
-
-def create_gn_editor(wnd: Window) -> Area or None:
-    print("Create GN Editor")
-    for area in wnd.screen.areas:
-        if area.type == 'VIEW_3D':
-            # Create and Setup new GN Editor.
-            with bpy.context.temp_override(window=wnd, area=area):
-                all_areas_memaddress = {area.as_pointer() for area in wnd.screen.areas}
-                bpy.ops.screen.area_split(factor=0.01, direction='HORIZONTAL')
-                for _area in wnd.screen.areas:
-                    if _area.as_pointer() not in all_areas_memaddress:
-                        _area.type = 'NODE_EDITOR'
-                        _area.ui_type = 'GeometryNodeTree'
-                        return _area
-            break
-
-
-def ensure_gn_editor(wnd: Window) -> Area or None:
-    if gn_editor := get_gn_editor(wnd):
-        return gn_editor, False
-    return create_gn_editor(wnd), True
 
 
 @Register.OPS.GENERIC
 class ToggleUVEditor:
+    bl_description: str = 'Toggle a UV Editor'
+
     def setup_uv_editor(self, area: bpy.types.Area):
         area.type = 'IMAGE_EDITOR'
         area.spaces[0].image = None # UVs are much easier to see without the checker texture

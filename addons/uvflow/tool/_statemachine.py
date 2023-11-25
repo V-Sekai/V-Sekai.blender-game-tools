@@ -1,7 +1,7 @@
 from uvflow.addon_utils import Register
 from uvflow.addon_utils.types import StateMachineModalOperator, Mouse, ModalTrigger, OpsReturn, EventType, EventValue, EventStateMachineAction, EventStateMachineNode
-from uvflow.addon_utils.utils.math import direction, angle_between, distance_between
-from uvflow.addon_utils.utils.raycast import BVHTreeRaycastInfo
+from uvflow.utils.math import direction, angle_between, distance_between
+from uvflow.utils.raycast import BVHTreeRaycastInfo
 
 from uvflow.operators.op_checker import ToggleUvCheckerMaterial
 from uvflow.operators.op_geo_overlay import UpdateGeoOverlays

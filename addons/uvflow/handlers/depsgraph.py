@@ -7,7 +7,7 @@ from uvflow.globals import GLOBALS, CM_SkipMeshUpdates, print_debug
 from uvflow.props.mesh import MeshProps
 from uvflow.rna_sub.uv_layers import on_UVMap_switch
 from uvflow.tool.attributes import save_attributes, apply_attributes, remove_attributes
-from uvflow.addon_utils.utils.mode import CM_ModeToggle
+from uvflow.utils.mode import CM_ModeToggle
 
 from uvflow.operators.op_geo_overlay import set_seam_props
 from uvflow.operators.op_checker import update_material_uvmap
@@ -20,6 +20,8 @@ saved_op_id: dict[str, int] = {
     'MESH_OT_reveal': 0,
     'MESH_OT_uv_texture_add': 0,
     'MESH_OT_uv_texture_remove': 0,
+    'UV_OT_seams_from_islands': 0,
+    'UV_OT_stitch': 0,
 }
 
 
