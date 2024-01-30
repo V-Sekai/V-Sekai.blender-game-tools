@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/pKrime/RigNet.git
+	branch = 7201dd2e09afcfb3417111365867de7610c593cf
+	commit = 7201dd2e09afcfb3417111365867de7610c593cf
+	parent = 6b22c18a58f51b73f2edf18ca1a84017335e2edd
+	method = merge
+	cmdver = 0.4.6

@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/fire/blender-rignet.git
+	branch = main
+	commit = dfd58240a61fe8524ab6e4cff5dc239f0ea51b4a
+	parent = 5ce8d628dee7d4f805c01f9937f1dc213e60dcf7
+	method = merge
+	cmdver = 0.4.6
