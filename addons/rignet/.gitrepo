@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/fire/blender-rignet.git
 	branch = main
-	commit = dfd58240a61fe8524ab6e4cff5dc239f0ea51b4a
-	parent = 5ce8d628dee7d4f805c01f9937f1dc213e60dcf7
+	commit = 09304661569bf4970f448afa6bb2b526ac301ffd
+	parent = bb9c744bfe149b5048294e21f51106674fee1a97
 	method = merge
 	cmdver = 0.4.6

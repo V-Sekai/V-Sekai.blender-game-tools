@@ -33,13 +33,13 @@ class BrignetRemesh(bpy.types.Operator):
         new_ob = objects.mesh_from_collection(wm.brignet_highrescollection, name='brignet_remesh')
 
         remesh = new_ob.modifiers.new(name='remesh', type='REMESH')
-        remesh.voxel_size = 0.01
+        remesh.voxel_size = 0.005
 
         decimate = new_ob.modifiers.new(name='decimate', type='DECIMATE')
         decimate.use_collapse_triangulate = True
 
         context.evaluated_depsgraph_get()
-        decimate.ratio = 1800 / decimate.face_count
+        decimate.ratio = 3085 / decimate.face_count
 
         new_ob.hide_render = True
         wm.brignet_targetmesh = new_ob
@@ -321,7 +321,7 @@ def register_properties():
                                                                         name="bRigNet HighRes Objects",
                                                                         description="Meshes to use for final skinning")
 
-    bpy.types.WindowManager.brignet_density = FloatProperty(name="density", default=0.571, min=0.1, max=1.0,
+    bpy.types.WindowManager.brignet_density = FloatProperty(name="density", default=1.0, min=0.1, max=1.0,
                                                             description="Bone Density")
 
     bpy.types.WindowManager.brignet_threshold = FloatProperty(name="threshold", default=0.75e-2,
