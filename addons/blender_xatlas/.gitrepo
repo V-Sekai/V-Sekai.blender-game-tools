@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/s-ilent/blender-xatlas.git
+	branch = master
+	commit = 488e8d8eeb66dad9883920e72a0a07242cd475e2
+	parent = c2606872efe1dba210884f37f086272f8826c186
+	method = merge
+	cmdver = 0.4.6
