@@ -329,7 +329,7 @@ def register_properties():
                                                               min=0.01e-2,
                                                               max=1.0)
 
-    bpy.types.WindowManager.brignet_samples = FloatProperty(name="samples", default=2000,
+    bpy.types.WindowManager.brignet_samples = FloatProperty(name="samples", default=4000,
                                                             description='Poisson Disks Samples',
                                                             min=100,
                                                             max=5000)
