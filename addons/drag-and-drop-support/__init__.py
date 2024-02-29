@@ -3,18 +3,17 @@
 #  Licensed under the MIT License. See LICENSE in the project root for license information.
 # ------------------------------------------------------------------------------------------
 
-# pyright: reportUnboundVariable=false
-# pyright: reportUnknownArgumentType=false
+
+import ctypes
 
 bl_info = {
     "name": "Drag and Drop Support",
     "author": "Natsuneko",
     "description": "Blender add-on for import some files from drag-and-drop",
     "blender": (3, 1, 0),
-    "version": (2, 14, 0),
+    "version": (2, 12, 1),
     "location": "Drag and Drop Support",
-    "doc_url": "https://docs.natsuneko.com/en-us/drag-and-drop-support/",
-    "tracker_url": "https://github.com/mika-f/blender-drag-and-drop/issues",
+    "warning": "",
     "category": "Import-Export",
 }
 
@@ -22,42 +21,67 @@ bl_info = {
 if "bpy" in locals():
     import importlib
 
-    importlib.reload(formats)
-    importlib.reload(interop)
     importlib.reload(operator)
-    importlib.reload(preferences)
+    importlib.reload(properties)
+    importlib.reload(ui)
 else:
-    from . import formats
-    from . import interop
     from . import operator
-    from . import preferences
+    from . import properties
+    from . import ui
 
-    import bpy  # nopep8
+    import bpy
+    from bpy.props import PointerProperty
 
+dll: ctypes.CDLL
 
-classes: list[type] = [operator.DropEventListener, preferences.DragAndDropPreferences]
-
-classes.extend(formats.CLASSES)
+classes = [
+    operator.DropEventListener2,
+    properties.DragAndDropSupportProperties,
+    ui.DropEventListenerUI,
+    ui.DropAlembicPropertiesUI,
+    ui.DropBvhPropertiesUI,
+    ui.DropFbxPropertiesUI,
+    ui.DropColladaPropertiesUI,
+    ui.DropGltfPropertiesUI,
+    ui.DropObjPropertiesUI,
+    ui.DropPlyPropertiesUI,
+    ui.DropStlPropertiesUI,
+    ui.DropUsdPropertiesUI,
+    ui.DropX3dPropertiesUI,
+]
 
 
 def register():
     global classes
+    global dll
 
-    # register classes
     for c in classes:
         bpy.utils.register_class(c)
 
-    interop.try_load()
+    bpy.types.Scene.DragAndDropSupportProperties = PointerProperty(
+        type=properties.DragAndDropSupportProperties
+    )
+
+    import os
+
+    dirname = os.path.dirname(__file__)
+    injector = os.path.join(dirname, "blender-injection.dll")
+
+    dll = ctypes.cdll.LoadLibrary(injector)
 
 
 def unregister():
     global classes
+    global dll
 
-    # unregister classes
     for c in classes:
-        bpy.utils.unregister_class(c)  # pyright: ignore[reportUnknownMemberType]
+        bpy.utils.unregister_class(c)
 
-    interop.try_unload()
+    del bpy.types.Scene.DragAndDropSupportProperties
+
+    import _ctypes
+
+    _ctypes.FreeLibrary(dll._handle)
 
 
 if __name__ == "__main__":
