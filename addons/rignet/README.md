@@ -41,36 +41,6 @@ A dependency installer is available in the preferences.
 - In the addon preferences, make sure that the Cuda version is detected correctly.
 - Hit the "Install" button. It can take time!
 
-#### Using _micromamba_
-
-Micromamba is a lightweight, standalone package manager for Anaconda Inc., similar to conda but faster and with less dependencies. It can be downloaded from the [Mamba Forge](https://github.com/mamba-org/mamba#install-mamba-or-micromamba).
-
-- Download and install Micromamba
-- Open a terminal or command prompt
-- Create a Micromamba Environment and activate it
-
-```bash
-micromamba create -n brignet python=3.10 -c conda-forge
-micromamba activate brignet
-```
-
-- Install PyTorch. If CUDA is installed, the CUDA version can be queried in a command prompt. For exampleIn this case, PyTorch can be installed in the command prompt via
-
-```bash
-micromamba install pytorch torchvision torchaudio scipy cudatoolkit=10.2 -c pytorch -c nvidia -c conda-forge
-micromamba install pyg -c pyg -c conda-forge
-```
-
-More complete information on the PyTorch command line can be found at the [PyTorch website](https://pytorch.org/).
-
-The directory of each environment can be obtained via
-
-```bash
-micromamba info
-```
-
-The environment directory can be set in the "Additional Modules" setting of the bRigNet preferences
-
 ## Usage
 
 Enable _bRigNet_ in the blender addons, the preferences will show up.
