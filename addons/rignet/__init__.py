@@ -43,7 +43,7 @@ except NameError:
     pass
 
 from .brignet import BrignetPanel, BrigNetPredict, BrignetRemesh, BrignetCollection
-from .preferences import BrignetPrefs, BrignetEnvironment
+from .preferences import BrignetPrefs, BrignetEnvironment, BRIGNET_OT_DownloadExtract
 from .loadskeleton import LoadRignetSkeleton, LoadSkeletonPanel
 from .postgen_utils import NamiFy, ExtractMetarig, SpineFix, MergeBones
 
@@ -52,6 +52,7 @@ from .postgen_utils import NamiFy, ExtractMetarig, SpineFix, MergeBones
 
 def register():
     brignet.register_properties()
+    bpy.utils.register_class(BRIGNET_OT_DownloadExtract)
     bpy.utils.register_class(BrignetEnvironment)
     bpy.utils.register_class(BrignetPrefs)
     bpy.utils.register_class(BrignetCollection)
@@ -74,7 +75,6 @@ def register():
 
     bpy.types.VIEW3D_MT_pose_context_menu.append(menus.pose_context_options)
 
-
 def unregister():
     try:
         from . import rignetconnect
@@ -85,6 +85,7 @@ def unregister():
 
     bpy.types.VIEW3D_MT_pose_context_menu.remove(menus.pose_context_options)
     BrignetPrefs.reset_module_paths()
+    bpy.utils.unregister_class(BRIGNET_OT_DownloadExtract)
 
     bpy.utils.unregister_class(BrignetPanel)
     bpy.utils.unregister_class(BrignetPrefs)

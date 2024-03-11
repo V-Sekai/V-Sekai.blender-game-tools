@@ -8,6 +8,59 @@ from .setup_utils import cuda_utils
 from .setup_utils import venv_utils
 from importlib.util import find_spec
 
+import urllib.request
+from zipfile import ZipFile
+
+class BRIGNET_OT_DownloadExtract(bpy.types.Operator):
+    """Operator to download and extract a file from a given URL"""
+    bl_idname = "brignet.download_extract"
+    bl_label = "Download and Extract"
+
+    # Properties used by the operator to store information about the download and extraction
+    url: bpy.props.StringProperty(
+        name="URL",
+        description="URL to download the file from"
+    )
+    
+    target_directory: bpy.props.StringProperty(
+        name="Target Directory",
+        description="Directory where the downloaded file should be extracted"
+    )
+    
+    file_name: bpy.props.StringProperty(
+        name="File Name",
+        description="Name of the file to be downloaded"
+    )
+
+    def execute(self, context):
+        # Check if target directory exists, if not, create it
+        if not os.path.exists(self.target_directory):
+            os.makedirs(self.target_directory)
+
+        # Full path to the downloaded zip file
+        full_file_path = os.path.join(self.target_directory, self.file_name)
+        
+        # Download the file
+        try:
+            urllib.request.urlretrieve(self.url, full_file_path)
+            self.report({'INFO'}, f"Downloaded file {self.file_name}")
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to download file: {e}")
+            return {'CANCELLED'}
+
+        # Extracting the zip file
+        try:
+            with ZipFile(full_file_path, 'r') as zip_ref:
+                zip_ref.extractall(self.target_directory)
+            self.report({'INFO'}, f"Extracted file {self.file_name}")
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to extract file: {e}")
+            return {'CANCELLED'}
+        
+        # Optionally remove the zip file after extraction
+        os.remove(full_file_path)
+        
+        return {'FINISHED'}
 
 class BrignetEnvironment(bpy.types.Operator):
     """Create virtual environment with required modules"""
@@ -124,6 +177,36 @@ class BrignetPrefs(bpy.types.AddonPreferences):
         layout = self.layout
         column = layout.column()
 
+        box = layout.box()
+        col = box.column(align=True)
+
+        # Model Path Property
+        row = col.row()
+        split = row.split(factor=0.8, align=False)
+        sp_col = split.column()
+        sp_col.prop(self, 'model_path', text='Model Path')
+
+        # Download Model Button
+        if not os.path.isdir(self.model_path) or 'bonenet' not in os.listdir(self.model_path):
+            sp_col = split.column()
+            op = sp_col.operator(
+                BRIGNET_OT_DownloadExtract.bl_idname,
+                text='Download'
+            )
+            op.url = "https://github.com/V-Sekai/V-Sekai.rig_net/releases/download/0.0.1/trained_models.zip"
+            op.target_directory = ".."
+            op.file_name = "trained_models.zip"
+
+            # Instructions for Unpacking Models
+            row = col.row()
+            if self.model_path:
+                unpack_path = op.target_directory
+                row.label(text="Please, unpack the content to")
+                row = col.row()
+                row.label(text=f"    {unpack_path}")
+            else:
+                row.label(text="Please, set 'Model Path' where 'RigNet' will be created and unpacked.")
+
         info = BrignetPrefs._cuda_info
         if info:
             py_ver = sys.version_info
@@ -149,43 +232,19 @@ class BrignetPrefs(bpy.types.AddonPreferences):
                         icon='URL'
                     )
                     op.url = 'https://developer.nvidia.com/downloads'
+                row = column.row()
+                row.label(text="Could not retrieve CUDA information", icon='ERROR')
+                
+                row = column.row()
+                row.label(text="Please ensure CUDA Toolkit is installed if you have CUDA-compatible hardware")
+                
+                op = row.operator(
+                    'wm.url_open',
+                    text='Download CUDA Toolkit from NVIDIA',
+                    icon='URL'
+                )
+                op.url = 'https://developer.nvidia.com/cuda-downloads'
 
         if self.missing_modules:
             row = column.row()
             row.label(text=f"Modules not found: {','.join(self.missing_modules)}", icon='ERROR')
-
-        box = column.box()
-        col = box.column()
-
-        row = col.row()
-        split = row.split(factor=0.8, align=False)
-        sp_col = split.column()
-        sp_col.prop(self, 'modules_path', text='Modules Path')
-
-        if self.missing_modules:
-            sp_col = split.column()
-            sp_col.operator(BrignetEnvironment.bl_idname, text='Install')
-
-        row = col.row()
-        split = row.split(factor=0.8, align=False)
-        sp_col = split.column()
-        sp_col.prop(self, 'model_path', text='Model Path')
-        if not os.path.isdir(self.model_path) or 'bonenet' not in os.listdir(self.model_path):
-            sp_col = split.column()
-            op = sp_col.operator(
-                'wm.url_open',
-                text='Download'
-            )
-            op.url = "https://umass-my.sharepoint.com/:u:/g/personal/zhanxu_umass_edu/EYKLCvYTWFJArehlo3-H2SgBABnY08B4k5Q14K7H1Hh0VA"
-
-            row = col.row()
-
-            if self.model_path:
-                row.label(text="Please, unpack the content of 'checkpoints' to")
-                row = col.row()
-                row.label(text=f"    {self.model_path}")
-            else:
-                row.label(text="Please, unpack the content of 'checkpoints' to the 'Model Path' folder")
-
-        row = layout.row()
-        row.label(text="End of bRigNet Preferences")
