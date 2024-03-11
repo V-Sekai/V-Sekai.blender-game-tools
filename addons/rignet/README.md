@@ -37,7 +37,7 @@ At present, the CUDA toolkit from nVidia is required, it can be found at the
 
 A dependency installer is available in the preferences.
 
-- Install CUDA. At present prebuilt packages support versions 10.1, 10.2, 11.1
+- Install CUDA. At present prebuilt packages support versions 10.1, 10.2
 - In the addon preferences, make sure that the Cuda version is detected correctly.
 - Hit the "Install" button. It can take time!
 
@@ -57,7 +57,7 @@ micromamba activate brignet
 - Install PyTorch. If CUDA is installed, the CUDA version can be queried in a command prompt. For exampleIn this case, PyTorch can be installed in the command prompt via
 
 ```bash
-micromamba install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia -c conda-forge
+micromamba install pytorch torchvision torchaudio pytorch-cuda=10.2 -c pytorch -c nvidia -c conda-forge
 micromamba install pyg -c pyg -c conda-forge
 ```
 
