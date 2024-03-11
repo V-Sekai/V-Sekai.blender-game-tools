@@ -57,7 +57,7 @@ micromamba activate brignet
 - Install PyTorch. If CUDA is installed, the CUDA version can be queried in a command prompt. For exampleIn this case, PyTorch can be installed in the command prompt via
 
 ```bash
-micromamba install pytorch torchvision torchaudio torch_geometric scipy cudatoolkit=10.2 -c pytorch -c nvidia -c conda-forge
+micromamba install pytorch torchvision torchaudio scipy cudatoolkit=10.2 -c pytorch -c nvidia -c conda-forge
 micromamba install pyg -c pyg -c conda-forge
 ```
 
