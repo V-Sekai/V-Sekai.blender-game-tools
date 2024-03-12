@@ -1,0 +1,485 @@
+{
+  "mimetype": "application/mtlx+json",
+  "materialx": {
+    "version": "1.38",
+    "children": [
+      {
+        "name": "phong1SG",
+        "category": "gltf_pbr",
+        "type": "surfaceshader",
+        "nodedef": "ND_gltf_pbr_surfaceshader",
+        "inputs": [
+          {
+            "name": "base_color",
+            "type": "color3",
+            "nodename": "image_base_color",
+            "output": "outcolor"
+          },
+          {
+            "name": "alpha",
+            "type": "float",
+            "nodename": "image_base_color",
+            "output": "outa"
+          },
+          {
+            "name": "metallic",
+            "type": "float",
+            "nodename": "image_orm",
+            "channels": "z"
+          },
+          {
+            "name": "roughness",
+            "type": "float",
+            "nodename": "image_orm",
+            "channels": "y"
+          },
+          {
+            "name": "occlusion",
+            "type": "float",
+            "nodename": "image_occlusion",
+            "channels": "x"
+          },
+          {
+            "name": "normal",
+            "type": "vector3",
+            "nodename": "image_normal"
+          },
+          {
+            "name": "emissive",
+            "type": "color3",
+            "value": "0, 0, 0",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "MAT_phong1SG",
+        "category": "surfacematerial",
+        "type": "material",
+        "inputs": [
+          {
+            "name": "surfaceshader",
+            "type": "surfaceshader",
+            "nodename": "phong1SG"
+          }
+        ]
+      },
+      {
+        "name": "image_base_color",
+        "category": "gltf_colorimage",
+        "type": "multioutput",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "diffuseMidnight.jpg",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "image_orm",
+        "category": "gltf_image",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_normal",
+        "category": "gltf_normalmap",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "normal.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_occlusion",
+        "category": "gltf_image",
+        "type": "float",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "phong1SG2",
+        "category": "gltf_pbr",
+        "type": "surfaceshader",
+        "nodedef": "ND_gltf_pbr_surfaceshader",
+        "inputs": [
+          {
+            "name": "base_color",
+            "type": "color3",
+            "nodename": "image_base_color2",
+            "output": "outcolor"
+          },
+          {
+            "name": "alpha",
+            "type": "float",
+            "nodename": "image_base_color2",
+            "output": "outa"
+          },
+          {
+            "name": "metallic",
+            "type": "float",
+            "nodename": "image_orm2",
+            "channels": "z"
+          },
+          {
+            "name": "roughness",
+            "type": "float",
+            "nodename": "image_orm2",
+            "channels": "y"
+          },
+          {
+            "name": "occlusion",
+            "type": "float",
+            "nodename": "image_occlusion2",
+            "channels": "x"
+          },
+          {
+            "name": "normal",
+            "type": "vector3",
+            "nodename": "image_normal2"
+          },
+          {
+            "name": "emissive",
+            "type": "color3",
+            "value": "0, 0, 0",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "MAT_phong1SG2",
+        "category": "surfacematerial",
+        "type": "material",
+        "inputs": [
+          {
+            "name": "surfaceshader",
+            "type": "surfaceshader",
+            "nodename": "phong1SG2"
+          }
+        ]
+      },
+      {
+        "name": "image_base_color2",
+        "category": "gltf_colorimage",
+        "type": "multioutput",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "diffuseBeach.jpg",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "image_orm2",
+        "category": "gltf_image",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_normal2",
+        "category": "gltf_normalmap",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "normal.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_occlusion2",
+        "category": "gltf_image",
+        "type": "float",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "phong1SG3",
+        "category": "gltf_pbr",
+        "type": "surfaceshader",
+        "nodedef": "ND_gltf_pbr_surfaceshader",
+        "inputs": [
+          {
+            "name": "base_color",
+            "type": "color3",
+            "nodename": "image_base_color3",
+            "output": "outcolor"
+          },
+          {
+            "name": "alpha",
+            "type": "float",
+            "nodename": "image_base_color3",
+            "output": "outa"
+          },
+          {
+            "name": "metallic",
+            "type": "float",
+            "nodename": "image_orm3",
+            "channels": "z"
+          },
+          {
+            "name": "roughness",
+            "type": "float",
+            "nodename": "image_orm3",
+            "channels": "y"
+          },
+          {
+            "name": "occlusion",
+            "type": "float",
+            "nodename": "image_occlusion3",
+            "channels": "x"
+          },
+          {
+            "name": "normal",
+            "type": "vector3",
+            "nodename": "image_normal3"
+          },
+          {
+            "name": "emissive",
+            "type": "color3",
+            "value": "0, 0, 0",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "MAT_phong1SG3",
+        "category": "surfacematerial",
+        "type": "material",
+        "inputs": [
+          {
+            "name": "surfaceshader",
+            "type": "surfaceshader",
+            "nodename": "phong1SG3"
+          }
+        ]
+      },
+      {
+        "name": "image_base_color3",
+        "category": "gltf_colorimage",
+        "type": "multioutput",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "diffuseStreet.jpg",
+            "colorspace": "srgb_texture"
+          }
+        ]
+      },
+      {
+        "name": "image_orm3",
+        "category": "gltf_image",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_normal3",
+        "category": "gltf_normalmap",
+        "type": "vector3",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "normal.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "image_occlusion3",
+        "category": "gltf_image",
+        "type": "float",
+        "inputs": [
+          {
+            "name": "file",
+            "type": "filename",
+            "value": "occlusionRougnessMetalness.jpg"
+          },
+          {
+            "name": "filtertype",
+            "type": "string",
+            "value": "closest"
+          },
+          {
+            "name": "uaddressmode",
+            "type": "string",
+            "value": "periodic"
+          },
+          {
+            "name": "vaddressmode",
+            "type": "string",
+            "value": "periodic"
+          }
+        ]
+      },
+      {
+        "name": "look",
+        "category": "look",
+        "children": [
+          {
+            "name": "MAT_phong1SG",
+            "category": "materialassign",
+            "material": "MAT_phong1SG",
+            "geom": "/Shoeobj/g_Shoe/Shoe/shoe"
+          }
+        ]
+      }
+    ]
+  }
+}

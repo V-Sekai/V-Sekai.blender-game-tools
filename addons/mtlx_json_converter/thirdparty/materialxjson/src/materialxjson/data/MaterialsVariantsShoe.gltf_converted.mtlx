@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<materialx version="1.38">
+  <!-- Generated shader: phong1SG -->
+  <gltf_pbr name="phong1SG" type="surfaceshader" nodedef="ND_gltf_pbr_surfaceshader">
+    <input name="base_color" type="color3" nodename="image_base_color" output="outcolor" />
+    <input name="alpha" type="float" nodename="image_base_color" output="outa" />
+    <input name="metallic" type="float" nodename="image_orm" channels="z" />
+    <input name="roughness" type="float" nodename="image_orm" channels="y" />
+    <input name="occlusion" type="float" nodename="image_occlusion" channels="x" />
+    <input name="normal" type="vector3" nodename="image_normal" />
+    <input name="emissive" type="color3" value="0, 0, 0" colorspace="srgb_texture" />
+  </gltf_pbr>
+  <!-- Generated material: MAT_phong1SG -->
+  <surfacematerial name="MAT_phong1SG" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="phong1SG" />
+  </surfacematerial>
+  <gltf_colorimage name="image_base_color" type="multioutput">
+    <input name="file" type="filename" value="diffuseMidnight.jpg" colorspace="srgb_texture" />
+  </gltf_colorimage>
+  <gltf_image name="image_orm" type="vector3">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <gltf_normalmap name="image_normal" type="vector3">
+    <input name="file" type="filename" value="normal.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_normalmap>
+  <gltf_image name="image_occlusion" type="float">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <!-- Generated shader: phong1SG2 -->
+  <gltf_pbr name="phong1SG2" type="surfaceshader" nodedef="ND_gltf_pbr_surfaceshader">
+    <input name="base_color" type="color3" nodename="image_base_color2" output="outcolor" />
+    <input name="alpha" type="float" nodename="image_base_color2" output="outa" />
+    <input name="metallic" type="float" nodename="image_orm2" channels="z" />
+    <input name="roughness" type="float" nodename="image_orm2" channels="y" />
+    <input name="occlusion" type="float" nodename="image_occlusion2" channels="x" />
+    <input name="normal" type="vector3" nodename="image_normal2" />
+    <input name="emissive" type="color3" value="0, 0, 0" colorspace="srgb_texture" />
+  </gltf_pbr>
+  <!-- Generated material: MAT_phong1SG2 -->
+  <surfacematerial name="MAT_phong1SG2" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="phong1SG2" />
+  </surfacematerial>
+  <gltf_colorimage name="image_base_color2" type="multioutput">
+    <input name="file" type="filename" value="diffuseBeach.jpg" colorspace="srgb_texture" />
+  </gltf_colorimage>
+  <gltf_image name="image_orm2" type="vector3">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <gltf_normalmap name="image_normal2" type="vector3">
+    <input name="file" type="filename" value="normal.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_normalmap>
+  <gltf_image name="image_occlusion2" type="float">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <!-- Generated shader: phong1SG3 -->
+  <gltf_pbr name="phong1SG3" type="surfaceshader" nodedef="ND_gltf_pbr_surfaceshader">
+    <input name="base_color" type="color3" nodename="image_base_color3" output="outcolor" />
+    <input name="alpha" type="float" nodename="image_base_color3" output="outa" />
+    <input name="metallic" type="float" nodename="image_orm3" channels="z" />
+    <input name="roughness" type="float" nodename="image_orm3" channels="y" />
+    <input name="occlusion" type="float" nodename="image_occlusion3" channels="x" />
+    <input name="normal" type="vector3" nodename="image_normal3" />
+    <input name="emissive" type="color3" value="0, 0, 0" colorspace="srgb_texture" />
+  </gltf_pbr>
+  <!-- Generated material: MAT_phong1SG3 -->
+  <surfacematerial name="MAT_phong1SG3" type="material">
+    <input name="surfaceshader" type="surfaceshader" nodename="phong1SG3" />
+  </surfacematerial>
+  <gltf_colorimage name="image_base_color3" type="multioutput">
+    <input name="file" type="filename" value="diffuseStreet.jpg" colorspace="srgb_texture" />
+  </gltf_colorimage>
+  <gltf_image name="image_orm3" type="vector3">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <gltf_normalmap name="image_normal3" type="vector3">
+    <input name="file" type="filename" value="normal.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_normalmap>
+  <gltf_image name="image_occlusion3" type="float">
+    <input name="file" type="filename" value="occlusionRougnessMetalness.jpg" />
+    <input name="filtertype" type="string" value="closest" />
+    <input name="uaddressmode" type="string" value="periodic" />
+    <input name="vaddressmode" type="string" value="periodic" />
+  </gltf_image>
+  <!-- Generated material assignments -->
+  <look name="look">
+    <materialassign name="MAT_phong1SG" material="MAT_phong1SG" geom="/Shoeobj/g_Shoe/Shoe/shoe" />
+  </look>
+</materialx>

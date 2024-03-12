@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/kwokcb/materialxjson.git
+	branch = main
+	commit = bf6690ed6fc2c993227b2666031df237bc178e42
+	parent = db31f0cf1f98f41c43fff914a45bce1404620726
+	method = merge
+	cmdver = 0.4.6

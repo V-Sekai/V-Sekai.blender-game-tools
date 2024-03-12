@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "materialxjson"
+version = "0.0.2"
+authors = [
+  { name="Bernard Kwok", email="kwokcb@gmail.com" },
+]
+description = "Utilities handling I/O of MaterialX in JSON format"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"}
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "materialx>=1.38.8"
+]
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools.package-data]
+"materialxjson.data" = ["*.*"]
+
+[project.urls]
+"Homepage" = "https://kwokcb.github.io/materialxjson/"
+"Issues" = "https://github.com/kwokcb/materialxjson/issues"
+"Source Code" = "https://github.com/kwokcb/materialxjson"
+"Documentation" = "https://kwokcb.github.io/materialxjson/"
