@@ -30,7 +30,7 @@ SOFTWARE.
 import argparse
 import json
 import MaterialX as mx
-from materialxjson import core as mtlxjson 
+from .thirdparty.materialxjson.src.materialxjson import core as mtlxjson
 import pkg_resources
 
 def mtlx_to_json(mtlx_file_name):
@@ -68,9 +68,8 @@ def main():
             f.write(json_output)
         print(f"Converted {args.input} to JSON and saved as {args.output}")
     elif args.to_mtlx:
-        xml_output = json_to_mtlx(args.input)
-        with open(args.output, 'w') as f:
-            f.write(xml_output)
+        doc = json_to_mtlx(args.input)
+        mx.writeToXmlFile(doc, args.output)
         print(f"Converted {args.input} to MaterialX and saved as {args.output}")
     else:
         print("Please specify --to-json or --to-mtlx for conversion direction.")
