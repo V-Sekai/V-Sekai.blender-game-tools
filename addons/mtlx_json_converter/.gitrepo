@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai/mtlx_json_converter.git
+	branch = main
+	commit = e18db2113d931293217c1a0c15ee868855acdc07
+	parent = e8cb1f1cd709147f4ebb09fde876e53bff40da2c
+	method = merge
+	cmdver = 0.4.6

@@ -1,0 +1,57 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Build Executable
+        run: |
+          pyinstaller --onefile mtlx_json_converter.py
+
+      - name: Set Artifact Name
+        id: vars
+        run: echo "::set-output name=artifact_name::$(echo Python${{ matrix.python-version }}-${{ runner.os }}-${{ github.repository }} | tr '[:upper:]' '[:lower:]' | tr '/' '-')"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ steps.vars.outputs.artifact_name }}
+          path: dist/
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.repository }} Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        if: startsWith(github.ref, 'refs/tags/')
