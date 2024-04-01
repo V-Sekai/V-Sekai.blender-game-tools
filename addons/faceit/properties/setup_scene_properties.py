@@ -6,157 +6,6 @@ from bpy.types import Object, PropertyGroup, Scene, Armature, Modifier, FCurve, 
 
 from ..core import faceit_utils as futils
 
-# --------------- CLASSES --------------------
-# | - Property Groups (Collection-/PointerProperty)
-# ----------------------------------------------
-
-
-# class FaceitDriverTargets(PropertyGroup):
-#     id_type: EnumProperty(
-#         items=[
-#             ('ACTION', 'Action', 'Action'),
-#             ('ARMATURE', 'Armature', 'Armature'),
-#             ('BRUSH', 'Brush', 'Brush'),
-#             ('CACHEFILE', 'Cache File', 'Cache File'),
-#             ('CAMERA', 'Camera', 'Camera'),
-#             ('COLLECTION', 'Collection', 'Collection'),
-#             ('CURVE', 'Curve', 'Curve'),
-#             ('CURVES', 'Curves', 'Curves'),
-#             ('FONT', 'Font', 'Font'),
-#             ('GREASEPENCIL', 'Grease Pencil', 'Pencil'),
-#             ('IMAGE', 'Image', 'Image'),
-#             ('KEY', 'Key', 'Key'),
-#             ('LATTICE', 'Lattice', 'Lattice'),
-#             ('LIBRARY', 'Library', 'Library'),
-#             ('LIGHT', 'Light', 'Light'),
-#             ('LIGHT_PROBE', 'Light Probe', 'Probe'),
-#             ('LINESTYLE', 'Line Style', 'Style'),
-#             ('MASK', 'Mask', 'Mask'),
-#             ('MATERIAL', 'Material', 'Material'),
-#             ('MESH', 'Mesh', 'Mesh'),
-#             ('META', 'Metaball', 'Metaball'),
-#             ('MOVIECLIP', 'Movie Clip', 'Clip'),
-#             ('NODETREE', 'Node Tree', 'Tree'),
-#             ('OBJECT', 'Object', 'Object'),
-#             ('PAINTCURVE', 'Paint Curve', 'Curve'),
-#             ('PALETTE', 'Palette', 'Palette'),
-#             ('PARTICLE', 'Particle', 'Particle'),
-#             ('POINTCLOUD', 'Point Cloud', 'Cloud'),
-#             ('SCENE', 'Scene', 'Scene'),
-#             ('SIMULATION', 'Simulation', 'Simulation'),
-#             ('SOUND', 'Sound', 'Sound'),
-#             ('SPEAKER', 'Speaker', 'Speaker'),
-#             ('TEXT', 'Text', 'Text'),
-#             ('TEXTURE', 'Texture', 'Texture'),
-#             ('VOLUME', 'Volume', 'Volume'),
-#             ('WINDOWMANAGER', 'Window Manager', 'Window Manager'),
-#             ('WORKSPACE', 'Workspace', 'Workspace'),
-#             ('WORLD', 'World', 'World'),
-#         ]
-#     )
-#     id: PointerProperty(
-#         type=ID,
-#     )
-#     id_is_self: BoolProperty()
-#     bone_target: StringProperty()
-#     transform_type: EnumProperty(
-#         items=[
-#             ('LOC_X', 'Location X', 'Location X'),
-#             ('LOC_Y', 'Location Y', 'Location Y'),
-#             ('LOC_Z', 'Location Z', 'Location Z'),
-#             ('ROT_X', 'Rotation X', 'Rotation X'),
-#             ('ROT_Y', 'Rotation Y', 'Rotation Y'),
-#             ('ROT_Z', 'Rotation Z', 'Rotation Z'),
-#             ('ROT_W', 'Rotation W', 'Rotation W'),
-#             ('SCALE_X', 'Scale X', 'Scale X'),
-#             ('SCALE_Y', 'Scale Y', 'Scale Y'),
-#             ('SCALE_Z', 'Scale Z', 'Scale Z'),
-#             ('SCALE_AVG', 'Scale Average', 'Scale Average'),
-#         ]
-#     )
-#     transform_space: EnumProperty(
-#         items=[
-#             ('WORLD_SPACE', 'World Space', 'World Space'),
-#             ('TRANSFORM_SPACE', 'Transform Space', 'Transform Space'),
-#             ('LOCAL_SPACE', 'Local', 'Local'),
-#         ]
-#     )
-#     rotation_mode: EnumProperty(
-#         items=[
-#             ('AUTO', 'Auto Euler', 'Euler using the rotation order of the target.'),
-#             ('XYZ', 'XYZ Euler', 'XYZ Euler rotation order.'),
-#             ('XZY', 'XZY Euler', 'XZY Euler rotation order.'),
-#             ('YXZ', 'YXZ Euler', 'YXZ Euler rotation order.'),
-#             ('YZX', 'YZX Euler', 'YZX Euler rotation order.'),
-#             ('ZXY', 'ZXY Euler', 'ZXY Euler rotation order.'),
-#             ('ZYX', 'ZYX Euler', 'ZYX Euler rotation order.'),
-#             ('QUATERNION', 'Quaternion', 'Quaternion rotation order.'),
-#             ('SWING_TWIST_X', 'Swing Twist X', 'Swing Twist X rotation order.'),
-#             ('SWING_TWIST_Y', 'Swing Twist Y', 'Swing Twist Y rotation order.'),
-#             ('SWING_TWIST_Z', 'Swing Twist Z', 'Swing Twist Z rotation order.'),
-#         ]
-#     )
-#     data_path: StringProperty()
-
-
-# class FaceitDriverVariables(PropertyGroup):
-#     '''Collection of driver variables'''
-#     # is_name_valid (readonly)
-#     name: StringProperty(name='Name', default='')
-#     targets: CollectionProperty(type=FaceitDriverTargets)
-#     type: EnumProperty(
-#         items=[
-#             ('SINGLE_PROP', 'Single Property', 'Single Property'),
-#             ('TRANSFORMS', 'Transforms', 'Transforms'),
-#             ('ROTATION_DIFF', 'Rotation Difference', 'Rotation Difference'),
-#             ('LOC_DIFF', 'Location Difference', 'Location Difference'),
-#         ]
-#     )
-
-
-# class FaceitDrivers(PropertyGroup):
-#     '''Collection of drivers'''
-#     expression: StringProperty(name='Expression', default='')
-#     # is_simple_expression(readonly)
-#     # is_valid(readonly)
-#     type: EnumProperty(
-#         items=[
-#             ('AVERAGE', 'Average', 'Average'),
-#             ('SUM', 'Sum', 'Sum'),
-#             ('SCRIPTED', 'Scripted', 'Scripted'),
-#             ('MIN', 'Minimum', 'Minimum'),
-#             ('MAX', 'Maximum', 'Maximum'),
-#         ]
-#     )
-#     use_self: BoolProperty(name='Use Self', default=False)
-#     variables: CollectionProperty(type=FaceitDriverVariables)
-
-
-# class FaceitDriverFcurves(PropertyGroup):
-#     '''Collection of (driver) fcurves'''
-#     data_path: StringProperty(name='Data Path', default='')
-#     array_index: IntProperty(name='Array Index', default=0)
-#     auto_smoothing: EnumProperty(
-#         items=[
-#             ('NONE', 'None', 'None'),
-#             ('CONT_ACCEL', 'Continuous Acceleration', 'Continuous Acceleration'),
-#         ]
-#     )
-#     color_mode: EnumProperty(
-#         items=[
-#             ('AUTO_RAINBOW', 'Auto Rainbow', 'Auto Rainbow'),
-#             ('AUTO_RGB', 'Auto RGB', 'Auto RGB'),
-#             ('AUTO_YRGB', 'Auto YRGB', 'Auto YRGB'),
-#             ('CUSTOM', 'Custom', 'Custom'),
-#         ]
-#     )
-#     extrapolation: EnumProperty(
-#         items=[
-#             ('CONSTANT', 'Constant', 'Constant'),
-#             ('LINEAR', 'Linear', 'Linear'),
-#         ]
-#     )
-#     group: StringProperty(name='Group', default='')
 
 class FaceitBakeModDrivers(PropertyGroup):
     data_path: StringProperty(name='Data Path', default='')
@@ -369,91 +218,25 @@ class FaceitObjects(PropertyGroup):
         return futils.get_object(self.name)
 
 
-def update_masked(self, context):
-    # Start the operator, closes automatically when the property is changed
-    bpy.ops.faceit.mask_group(
-        'INVOKE_DEFAULT',
-        vgroup_name=self.name,
-        operation='ADD' if self.is_masked else 'REMOVE',
-        # prop=self.name
-    )
-
-
-class AssignedObjects(PropertyGroup):
-    name: StringProperty(
-        name='Object Name'
-    )
-
-
-class FaceitVertexGroups(PropertyGroup):
-    name: StringProperty(
-        name='Vertex Group Name',
-        description='Vertex group name'
-    )
-    is_drawn: BoolProperty(
-        name='Draw Assigned',
-        default=False
-    )
-    is_assigned: BoolProperty(
-        name='Is Assigned',
-    )
-    is_masked: BoolProperty(
-        name='Is Masked',
-        default=False,
-        description='Is this vertex group a mask?',
-    )
-    mask_inverted: BoolProperty(
-        name='Invert Mask',
+class PickerOptions(PropertyGroup):
+    hide_assigned: BoolProperty(
+        name='Hide Assigned',
         default=True,
-        description='Invert the mask',
+        description='Hide all vertices that are already assigned to a Faceit Vertex Group.'
     )
-    assigned_to_objects: CollectionProperty(
-        name='Assigned To Objects',
-        type=AssignedObjects
+    pick_geometry: EnumProperty(
+        name='Pick Geometry',
+        items=(
+            ('SURFACE', 'Surface', 'Assign based on connected vertices (Surfaces/Islands)'),
+            ('OBJECT', 'Object', 'Assign the vertex group to the entire object'),
+        ),
+        default='SURFACE',
     )
-
-    def assign_object(self, obj_name):
-        if obj_name in self.assigned_to_objects:
-            return
-        item = self.assigned_to_objects.add()
-        item.name = obj_name
-        self.is_assigned = True
-
-    def remove_object(self, obj_name):
-        idx = self.assigned_to_objects.find(obj_name)
-        if idx != -1:
-            self.assigned_to_objects.remove(idx)
-            if not self.assigned_to_objects:
-                self.is_assigned = False
-
-    # assigned_to_objects: StringProperty(
-    #     name='Assigned To Objects',
-    #     default=''
-    # )
-    # def assign_object(self, object_name):
-    #     assigned_to = self.assigned_to_objects.split(';;')
-    #     if object_name not in assigned_to:
-    #         self.assigned_to_objects += object_name + ';;'
-    #     print(self.assigned_to_objects.split(';;'))
-
-    # def get_assigned_object_names(self):
-    #     ''''''
-    #     assigned_to = self.assigned_to_objects.split(';;')
-    #     return [x for x in assigned_to if x != '']
-    #     # return self.assigned_to_objects.split(';;')
-
-    # def remove_object(self, object_name):
-    #     '''Remove an object'''
-    #     assigned_to = self.assigned_to_objects.split(';;')
-    #     if object_name in assigned_to:
-    #         assigned_to.remove(object_name)
-    #     self.assigned_to_objects = ''
-    #     for x in assigned_to:
-    #         self.assigned_to_objects += x + ';;'
-
-    # --------------- FUNCTIONS --------------------
-    # | - Update/Getter/Setter
-    # ----------------------------------------------
+    picking_group: StringProperty(
+        name='Picking Group',
+        description='The vertex group that is currently being picked',
+        default='',
+    )
 
 
 def update_object_index(self, context):
@@ -494,8 +277,9 @@ def register():
         name='Show Warnings',
         default=False,
     )
-    Scene.faceit_vertex_groups = CollectionProperty(
-        type=FaceitVertexGroups
+    Scene.faceit_picker_options = PointerProperty(
+        name='Picker Options',
+        type=PickerOptions
     )
 
 
@@ -504,3 +288,4 @@ def unregister():
     del Scene.faceit_subscribed
     del Scene.faceit_face_index
     del Scene.faceit_show_warnings
+    del Scene.faceit_picker_options

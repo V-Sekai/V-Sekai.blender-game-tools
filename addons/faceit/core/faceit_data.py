@@ -6,12 +6,13 @@ import bpy
 
 from . import arkit_shapes as shapes
 
-RIG_FILE = '/resources/FaceitRig.blend'
-CONTROL_RIG_FILE = '/resources/FaceitControlRig.blend'
-LANDMARKS_FILE = '/resources/FaceitLandmarks.blend'
-RETARGET_PRESETS = '/resources/retarget_presets/'
-EXPRESSION_PRESETS = '/resources/expressions/'
-EXPRESSION_PRESETS_RIGIFY_NEW = '/resources/expressions/new_rigify_rig/'
+RIG_FILE = 'resources/FaceitRig.blend'
+CONTROL_RIG_FILE = 'resources/FaceitControlRig.blend'
+LANDMARKS_FILE = 'resources/FaceitLandmarks.blend'
+RETARGET_PRESETS = 'resources/retarget_presets/'
+EXPRESSION_PRESETS = 'resources/expressions/'
+EXPRESSION_PRESETS_RIGIFY_NEW = 'resources/expressions/new_rigify_rig/'
+ARKIT_REFERENCE_MODEL = 'resources/apple_shapes_reference.blend'
 
 FACEIT_VERTEX_GROUPS = [
     'faceit_right_eyeball',
@@ -27,6 +28,33 @@ FACEIT_VERTEX_GROUPS = [
     'faceit_facial_hair',
 ]
 
+GROUP_COLORS_LIGHT = {
+    'faceit_right_eyeball': (1.0, 0.0, 0.0, 1.0),     # Red
+    'faceit_left_eyeball': (0.0, 1.0, 0.0, 1.0),     # Green
+    'faceit_left_eyes_other': (0.0, 0.0, 1.0, 1.0),     # Blue
+    'faceit_right_eyes_other': (1.0, 1.0, 0.0, 1.0),     # Yellow
+    'faceit_upper_teeth': (0.5, 0.0, 0.5, 1.0),     # Purple
+    'faceit_lower_teeth': (1.0, 0.5, 0.0, 1.0),     # Orange
+    'faceit_tongue': (0.0, 1.0, 1.0, 1.0),     # Cyan
+    'faceit_eyelashes': (1.0, 0.0, 1.0, 1.0),     # Magenta
+    'faceit_rigid': (0.0, 0.5, 0.5, 1.0),     # Teal
+    'faceit_main': (1.0, 0.5, 0.5, 1.0),     # Pink
+    'faceit_facial_hair': (0.5, 1.0, 0.0, 1.0)      # Lime
+}
+GROUP_COLORS_DARK = {
+    'faceit_right_eyeball': (0.5, 0.0, 0.0, 1.0),     # Dark Red
+    'faceit_left_eyeball': (0.0, 0.5, 0.0, 1.0),     # Dark Green
+    'faceit_left_eyes_other': (0.0, 0.0, 0.5, 1.0),     # Dark Blue
+    'faceit_right_eyes_other': (0.5, 0.5, 0.0, 1.0),     # Dark Yellow
+    'faceit_upper_teeth': (0.25, 0.0, 0.25, 1.0),   # Dark Purple
+    'faceit_lower_teeth': (0.5, 0.25, 0.0, 1.0),    # Dark Orange
+    'faceit_tongue': (0.0, 0.5, 0.5, 1.0),     # Dark Cyan
+    'faceit_eyelashes': (0.5, 0.0, 0.5, 1.0),     # Dark Magenta
+    'faceit_rigid': (0.0, 0.25, 0.25, 1.0),   # Dark Teal
+    'faceit_main': (0.5, 0.25, 0.25, 1.0),   # Dark Pink
+    'faceit_facial_hair': (0.25, 0.5, 0.0, 1.0)     # Dark Lime
+}
+
 
 def get_faceit_current_version():
 
@@ -40,11 +68,11 @@ def get_faceit_current_version():
 
 
 def get_addon_dir():
-    return str(pathlib.Path(os.path.dirname(__file__)).parent.resolve())
+    return pathlib.Path(os.path.dirname(__file__)).parent.resolve()
 
 
 def get_retargeting_presets():
-    return get_addon_dir() + RETARGET_PRESETS
+    return os.path.join(get_addon_dir(), RETARGET_PRESETS)
 
 
 def get_expression_presets(rig_type='FACEIT'):
@@ -52,32 +80,76 @@ def get_expression_presets(rig_type='FACEIT'):
     @rig_type: value in ['FACEIT', 'RIGIFY_NEW']
     '''
     if rig_type in ('FACEIT', 'RIGIFY'):
-        return get_addon_dir() + EXPRESSION_PRESETS
+        return os.path.join(get_addon_dir(), EXPRESSION_PRESETS)
     elif rig_type == 'RIGIFY_NEW':
-        return get_addon_dir() + EXPRESSION_PRESETS_RIGIFY_NEW
+        return os.path.join(get_addon_dir(), EXPRESSION_PRESETS_RIGIFY_NEW)
+    # Return the default expression set for empty expressions on any rig...
+    return os.path.join(get_addon_dir(), EXPRESSION_PRESETS)
 
 
 def get_rig_file():
-    return get_addon_dir() + RIG_FILE
+    return os.path.join(get_addon_dir(), RIG_FILE)
 
 
 def get_control_rig_file():
-    return get_addon_dir() + CONTROL_RIG_FILE
+    return os.path.join(get_addon_dir(), CONTROL_RIG_FILE)
 
 
 def get_landmarks_file():
-    return get_addon_dir() + LANDMARKS_FILE
+    return os.path.join(get_addon_dir(), LANDMARKS_FILE)
+
+
+def get_arkit_reference():
+    return os.path.join(get_addon_dir(), ARKIT_REFERENCE_MODEL)
+
+
+LIVE_MOCAP_DEFAULT_SETTINGS = {
+    'FACECAP': {
+        'address': '0.0.0.0',
+        'port': 9001,
+        'rotation_units': 'DEG',
+        'can_animate_head_rotation': True,
+        'can_animate_head_location': True,
+        'can_animate_eye_rotation': True,
+    },
+    'EPIC': {
+        'address': '0.0.0.0',
+        'port': 11111,
+        'rotation_units': 'RAD',
+        'can_animate_head_rotation': True,
+        'can_animate_head_location': False,
+        'can_animate_eye_rotation': True,
+    },
+    'TILE': {
+        'address': '0.0.0.0',
+        'port': 9001,
+        'rotation_units': 'DEG',
+        'rotation_units_variable': True,
+        'can_animate_head_rotation': True,
+        'can_animate_head_location': True,
+        'can_animate_eye_rotation': True,
+
+    },
+    'IFACIALMOCAP': {
+        'address': '0.0.0.0',
+        'port': 49983,
+        'rotation_units': 'DEG',
+        'can_animate_head_rotation': True,
+        'can_animate_head_location': True,
+        'can_animate_eye_rotation': True,
+        'head_location_multiplier': 100,
+    },
+    'A2F': {
+        'can_animate_head_rotation': False,
+        'can_animate_head_location': False,
+        'can_animate_eye_rotation': False,
+    },
+}
 
 
 def get_engine_settings(engine):
-    if engine == 'FACECAP':
-        engine_settings = bpy.context.scene.faceit_face_cap_mocap_settings
-        engine_settings.indices_order = 'FACECAP'
-    elif engine == 'EPIC':
-        engine_settings = bpy.context.scene.faceit_epic_mocap_settings
-        engine_settings.indices_order = 'ARKIT'
-    elif engine == 'A2F':
-        engine_settings = bpy.context.scene.faceit_a2f_mocap_settings
+    scene = bpy.context.scene
+    engine_settings = scene.faceit_live_mocap_settings.get(engine)
     return engine_settings
 
 
@@ -136,17 +208,19 @@ def get_shape_data_for_mocap_engine(mocap_engine=None):
         return
     if mocap_engine == 'ARKIT':
         return get_arkit_shape_data()
-    if mocap_engine == 'FACECAP':
+    elif mocap_engine in ('FACECAP', 'TILE'):
         return get_face_cap_shape_data()
-    if mocap_engine == 'EPIC':
+    elif mocap_engine == 'EPIC':
         return get_epic_shape_data()
-    if mocap_engine == 'A2F':
+    elif mocap_engine == 'A2F':
         return get_a2f_shape_data()
+    elif mocap_engine == 'IFACIALMOCAP':
+        return get_face_cap_shape_data()
 
 
 def get_list_faceit_groups():
-
-    return FACEIT_VERTEX_GROUPS
+    ''' Returns the faceit vertex group names. '''
+    return FACEIT_VERTEX_GROUPS.copy()
 
 
 def get_face_region_items(self, context):
@@ -158,34 +232,36 @@ def get_face_region_items(self, context):
 
 
 def get_regions_dict():
+    ''' Returns a dictionary with the shape names as keys and the region as value '''
     region_dict = {}
     for region, shapes in FACE_REGIONS_BASE.items():
         for shape in shapes:
             region_dict[shape] = region
-
     return region_dict
 
 
 FACE_REGIONS_BASE = {
     'Eyes': [
-        'eyeBlinkLeft',
         'eyeLookDownLeft',
         'eyeLookInLeft',
         'eyeLookOutLeft',
         'eyeLookUpLeft',
-        'eyeSquintLeft',
-        'eyeWideLeft',
-        'eyeBlinkRight',
         'eyeLookDownRight',
         'eyeLookInRight',
         'eyeLookOutRight',
         'eyeLookUpRight',
-        'eyeSquintRight',
-        'eyeWideRight',
         'eyesLookLeft',
         'eyesLookRight',
         'eyesLookUp',
         'eyesLookDown',
+    ],
+    'Eyelids': [
+        'eyeBlinkLeft',
+        'eyeBlinkRight',
+        'eyeSquintLeft',
+        'eyeWideLeft',
+        'eyeSquintRight',
+        'eyeWideRight',
         'eyesCloseL',
         'eyesCloseR',
         'eyesUpperLidRaiserL',
@@ -311,7 +387,6 @@ FACE_REGIONS_BASE = {
         'tongueCurlDown',
     ],
     'Other': [
-
     ]
 }
 
@@ -360,63 +435,63 @@ FACEIT_CTRL_BONES = [
     'cheek.T.R.001', 'teeth.T']
 
 MOD_TYPE_ICON_DICT = {
-    "DATA_TRANSFER": "MOD_DATA_TRANSFER",
-    "MESH_CACHE": "MOD_MESHDEFORM",
-    "MESH_SEQUENCE_CACHE": "MOD_MESHDEFORM",
-    "NORMAL_EDIT": "MOD_NORMALEDIT",
-    "WEIGHTED_NORMAL": "MOD_NORMALEDIT",
-    "UV_PROJECT": "MOD_UVPROJECT",
-    "UV_WARP": "MOD_UVPROJECT",
-    "VERTEX_WEIGHT_EDIT": "MOD_VERTEX_WEIGHT",
-    "VERTEX_WEIGHT_MIX": "MOD_VERTEX_WEIGHT",
-    "VERTEX_WEIGHT_PROXIMITY": "MOD_VERTEX_WEIGHT",
-    "ARRAY": "MOD_ARRAY",
-    "BEVEL": "MOD_BEVEL",
-    "BOOLEAN": "MOD_BOOLEAN",
-    "BUILD": "MOD_BUILD",
-    "DECIMATE": "MOD_DECIM",
-    "EDGE_SPLIT": "MOD_EDGESPLIT",
-    "NODES": "GEOMETRY_NODES",
-    "MASK": "MOD_MASK",
-    "MIRROR": "MOD_MIRROR",
-    "MESH_TO_VOLUME": "VOLUME_DATA",
-    "MULTIRES": "MOD_MULTIRES",
-    "REMESH": "MOD_REMESH",
-    "SCREW": "MOD_SCREW",
-    "SKIN": "MOD_SKIN",
-    "SOLIDIFY": "MOD_SOLIDIFY",
-    "SUBSURF": "MOD_SUBSURF",
-    "TRIANGULATE": "MOD_TRIANGULATE",
-    "VOLUME_TO_MESH": "VOLUME_DATA",
-    "WELD": "AUTOMERGE_OFF",
-    "WIREFRAME": "MOD_WIREFRAME",
-    "ARMATURE": "MOD_ARMATURE",
-    "CAST": "MOD_CAST",
-    "CURVE": "MOD_CURVE",
-    "DISPLACE": "MOD_DISPLACE",
-    "HOOK": "HOOK",
-    "LAPLACIANDEFORM": "MOD_MESHDEFORM",
-    "LATTICE": "MOD_LATTICE",
-    "MESH_DEFORM": "MOD_MESHDEFORM",
-    "SHRINKWRAP": "MOD_SHRINKWRAP",
-    "SIMPLE_DEFORM": "MOD_SIMPLEDEFORM",
-    "SMOOTH": "MOD_SMOOTH",
-    "CORRECTIVE_SMOOTH": "MOD_SMOOTH",
-    "LAPLACIANSMOOTH": "MOD_SMOOTH",
-    "SURFACE_DEFORM": "MOD_MESHDEFORM",
-    "WARP": "MOD_WARP",
-    "WAVE": "MOD_WAVE",
-    "VOLUME_DISPLACE": "VOLUME_DATA",
-    "CLOTH": "MOD_CLOTH",
-    "COLLISION": "MOD_PHYSICS",
-    "DYNAMIC_PAINT": "MOD_DYNAMICPAINT",
-    "EXPLODE": "MOD_EXPLODE",
-    "FLUID": "MOD_FLUIDSIM",
-    "OCEAN": "MOD_OCEAN",
-    "PARTICLE_INSTANCE": "MOD_PARTICLE_INSTANCE",
-    "PARTICLE_SYSTEM": "MOD_PARTICLES",
-    "SOFT_BODY": "MOD_SOFT",
-    "SURFACE": "MODIFIER",
+    'DATA_TRANSFER': 'MOD_DATA_TRANSFER',
+    'MESH_CACHE': 'MOD_MESHDEFORM',
+    'MESH_SEQUENCE_CACHE': 'MOD_MESHDEFORM',
+    'NORMAL_EDIT': 'MOD_NORMALEDIT',
+    'WEIGHTED_NORMAL': 'MOD_NORMALEDIT',
+    'UV_PROJECT': 'MOD_UVPROJECT',
+    'UV_WARP': 'MOD_UVPROJECT',
+    'VERTEX_WEIGHT_EDIT': 'MOD_VERTEX_WEIGHT',
+    'VERTEX_WEIGHT_MIX': 'MOD_VERTEX_WEIGHT',
+    'VERTEX_WEIGHT_PROXIMITY': 'MOD_VERTEX_WEIGHT',
+    'ARRAY': 'MOD_ARRAY',
+    'BEVEL': 'MOD_BEVEL',
+    'BOOLEAN': 'MOD_BOOLEAN',
+    'BUILD': 'MOD_BUILD',
+    'DECIMATE': 'MOD_DECIM',
+    'EDGE_SPLIT': 'MOD_EDGESPLIT',
+    'NODES': 'GEOMETRY_NODES',
+    'MASK': 'MOD_MASK',
+    'MIRROR': 'MOD_MIRROR',
+    'MESH_TO_VOLUME': 'VOLUME_DATA',
+    'MULTIRES': 'MOD_MULTIRES',
+    'REMESH': 'MOD_REMESH',
+    'SCREW': 'MOD_SCREW',
+    'SKIN': 'MOD_SKIN',
+    'SOLIDIFY': 'MOD_SOLIDIFY',
+    'SUBSURF': 'MOD_SUBSURF',
+    'TRIANGULATE': 'MOD_TRIANGULATE',
+    'VOLUME_TO_MESH': 'VOLUME_DATA',
+    'WELD': 'AUTOMERGE_OFF',
+    'WIREFRAME': 'MOD_WIREFRAME',
+    'ARMATURE': 'MOD_ARMATURE',
+    'CAST': 'MOD_CAST',
+    'CURVE': 'MOD_CURVE',
+    'DISPLACE': 'MOD_DISPLACE',
+    'HOOK': 'HOOK',
+    'LAPLACIANDEFORM': 'MOD_MESHDEFORM',
+    'LATTICE': 'MOD_LATTICE',
+    'MESH_DEFORM': 'MOD_MESHDEFORM',
+    'SHRINKWRAP': 'MOD_SHRINKWRAP',
+    'SIMPLE_DEFORM': 'MOD_SIMPLEDEFORM',
+    'SMOOTH': 'MOD_SMOOTH',
+    'CORRECTIVE_SMOOTH': 'MOD_SMOOTH',
+    'LAPLACIANSMOOTH': 'MOD_SMOOTH',
+    'SURFACE_DEFORM': 'MOD_MESHDEFORM',
+    'WARP': 'MOD_WARP',
+    'WAVE': 'MOD_WAVE',
+    'VOLUME_DISPLACE': 'VOLUME_DATA',
+    'CLOTH': 'MOD_CLOTH',
+    'COLLISION': 'MOD_PHYSICS',
+    'DYNAMIC_PAINT': 'MOD_DYNAMICPAINT',
+    'EXPLODE': 'MOD_EXPLODE',
+    'FLUID': 'MOD_FLUIDSIM',
+    'OCEAN': 'MOD_OCEAN',
+    'PARTICLE_INSTANCE': 'MOD_PARTICLE_INSTANCE',
+    'PARTICLE_SYSTEM': 'MOD_PARTICLES',
+    'SOFT_BODY': 'MOD_SOFT',
+    'SURFACE': 'MODIFIER',
 }
 
 BAKE_MOD_TYPES = [
@@ -426,3 +501,43 @@ BAKE_MOD_TYPES = [
     'VERTEX_WEIGHT_PROXIMITY', 'CLOTH']
 
 # HIDE_MOD_TYPES = ['SURFACE_DEFORM']
+GENERATORS = [
+    'ARRAY',
+    'BEVEL',
+    'BOOLEAN',
+    'BUILD',
+    'DECIMATE',
+    'EDGE_SPLIT',
+    'MASK',
+    'MIRROR',
+    'MULTIRES',
+    'REMESH',
+    'SCREW',
+    'SKIN',
+    'SOLIDIFY',
+    'SUBSURF',
+    'TRIANGULATE',
+    'WELD',
+    'WIREFRAME',
+    'NODES'
+]
+
+DEFORMERS = [
+    'ARMATURE',
+    'CAST',
+    'CURVE',
+    'DISPLACE',
+    'HOOK',
+    'LAPLACIANDEFORM',
+    'LAPLACIANSMOOTH',
+    'LATTICE',
+    'MESH_DEFORM',
+    'SHRINKWRAP',
+    'SIMPLE_DEFORM',
+    'SMOOTH',
+    'WARP',
+    'WAVE',
+    'SURFACE_DEFORM',
+    'CLOTH',
+    'SOFT_BODY',
+]

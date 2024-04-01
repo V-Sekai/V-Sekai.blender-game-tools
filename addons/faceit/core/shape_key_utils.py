@@ -16,7 +16,7 @@ def apply_matrix_to_all_mesh_data(mesh_data, matrix):
     return mesh_data
 
 
-def get_mesh_data(obj, dg=None, evaluated=True):
+def get_mesh_data(obj, dg=None, evaluated=True) -> np.ndarray:
     '''Get evaluated or basis shape data'''
     if evaluated:
         verts = obj.evaluated_get(dg).data.vertices
@@ -95,14 +95,24 @@ def get_all_shape_key_actions():
     return actions
 
 
+def get_shape_keys_from_objects(objects=None) -> list:
+    '''Get a list that holds all shape keys from the given objects'''
+    shape_keys = []
+    if not objects:
+        objects = futils.get_faceit_objects_list()
+    for obj in objects:
+        if has_shape_keys(obj):
+            shape_keys.extend(obj.data.shape_keys.key_blocks)
+    return shape_keys
+
+
 def get_shape_key_names_from_objects(objects=None) -> list:
+    '''Get a list that holds all shape key names from the given objects'''
     shape_key_names = []
     if not objects:
         objects = futils.get_faceit_objects_list()
-
-    for obj in objects:
-        if has_shape_keys(obj):
-            shape_key_names.extend([sk.name for sk in obj.data.shape_keys.key_blocks if sk.name != 'Basis'])
+    shape_keys = get_shape_keys_from_objects(objects)
+    shape_key_names.extend([sk.name for sk in shape_keys if sk.name != 'Basis'])
     return list(set(shape_key_names))
 
 

@@ -20,6 +20,7 @@ from .ui import FACEIT_PT_Base, FACEIT_PT_BaseSub
 
 class FACEIT_PT_BaseRetargetShapes(FACEIT_PT_Base):
     UI_TABS = ('SHAPES',)
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/target_shapes/"
 
 
 class FACEIT_PT_TargetShapeLists(FACEIT_PT_BaseRetargetShapes, bpy.types.Panel):
@@ -79,9 +80,10 @@ class FACEIT_PT_TargetShapeLists(FACEIT_PT_BaseRetargetShapes, bpy.types.Panel):
                 row.operator('faceit.export_retargeting_map', text='Save Profile').expression_sets = 'ARKIT'
             if ctrl_rig_connected:
                 draw_text_block(
+                    context,
                     col,
                     text="Can't edit ARKit target shapes while the control rig is connected. See CONTROL tab.",
-                    heading="WARNING", chars_per_row=70)
+                    heading="WARNING")
                 # Disable Panel if the control rig is connected.
                 # .... Or disable each expression individually if they are connected to drivers..
                 # ctrl_rig = scene.faceit_control_armature

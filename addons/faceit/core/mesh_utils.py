@@ -1,9 +1,43 @@
 from math import acos, pi
+from mathutils import kdtree, Vector
 
 import bmesh
 import bpy
 
+from bpy.types import Mesh
+
+from ..core.faceit_utils import get_faceit_objects_list
 from .vgroup_utils import get_verts_in_vgroup
+
+
+def delete_vertices_outside(bm, vids):
+    '''Deletes all vertices that are not in the vids'''
+    verts_delete = [v for v in bm.verts if v.index not in vids]
+    if verts_delete:
+        bmesh.ops.delete(bm, geom=verts_delete, context='VERTS')
+
+
+# def create_bmesh_from_multiple_objects(objects, vertex_group_filter=''):
+#     dg = bpy.context.evaluated_depsgraph_get()
+#     bm = bmesh.new()
+#     for obj in objects:
+#         vgroup = obj.vertex_groups.get(vertex_group_filter)
+#         if not vgroup:
+#             continue
+#         obj = obj.evaluated_get(dg)
+#         vg_idx = vgroup.index
+#         vids = [v.index for v in obj.data.vertices if vg_idx in [vg.group for vg in v.groups]]
+#         bm_temp = bmesh.new()
+#         bm_temp.from_mesh(obj.data)
+#         delete_vertices_outside(bm_temp, vids)
+#         me = bpy.data.meshes.new('temp_mesh')
+#         bm_temp.to_mesh(me)
+#         bm_temp.free()
+#         for v in me.vertices:
+#             v.co = obj.matrix_world @ v.co
+#         bm.from_mesh(me)
+#         bpy.data.meshes.remove(me)
+#     return bm
 
 
 def get_max_dim_in_direction(obj, direction, vertex_group_name=None):
@@ -39,16 +73,14 @@ def select_vertices_bmesh(vids, bm, deselect_others=False):
     bm.select_flush(False)
 
 
-def select_vertices(obj, vs=None, deselect_others=False) -> None:
+def select_vertices(obj, vids=None, deselect_others=False) -> None:
     '''
     select vertices using the bmesh module
     @obj: the object that holds mesh data
     @vs : vert subset to select
     @deselect_others : deselect all other vertices
     '''
-    if vs:
-        vids = [v.index for v in vs]
-    else:
+    if not vids:
         vids = [v.index for v in obj.data.vertices]
     if obj.mode == 'EDIT':
         bm = bmesh.from_edit_mesh(obj.data)
@@ -101,6 +133,23 @@ def is_inside_dot(target_pt_global, mesh_obj, tolerance=0.05):
     inside = angle < 90 - tolerance
 
     return inside
+
+
+def search_corresponding_vertices_in_other_object(indices: list, obj_from: Mesh, obj_search: Mesh):
+    '''Creates a kdtree of the mesh_to_search vertices and finds the corresponding vertex for each from original_mesh.
+        Returns: list of mesh_to_search indices
+    '''
+    size = len(obj_search.data.vertices)
+    original_verts = [v for v in obj_from.data.vertices if v.index in indices]
+    kd = kdtree.KDTree(size)
+    for i, v in enumerate(obj_search.data.vertices):
+        kd.insert(obj_search.matrix_world @ v.co, i)
+    kd.balance()
+    corresponding_indices = []
+    for v in original_verts:
+        co, index, dist = kd.find(obj_from.matrix_world @ v.co)
+        corresponding_indices.append(index)
+    return corresponding_indices
 
 
 class GeometryIslands:

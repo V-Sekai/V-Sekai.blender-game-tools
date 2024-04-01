@@ -58,7 +58,11 @@ class FACEIT_OT_MoveBakeModifier(bpy.types.Operator):
         mod = obj.modifiers[index]
         list_length = len(obj.modifiers) - 1
         new_index = max(0, min((index + (-1 if self.direction == 'UP' else 1)), list_length))
-        override = {'object': obj, 'active_object': obj}
-        bpy.ops.object.modifier_move_to_index(override, modifier=mod.name, index=max(0, min(new_index, list_length)))
+        if bpy.app.version < (3, 6, 0):
+            override = {'object': obj, 'active_object': obj}
+            bpy.ops.object.modifier_move_to_index(override, modifier=mod.name, index=max(0, min(new_index, list_length)))
+        else:
+            obj.modifiers.move(index, new_index)
+            active_item.modifiers.move(index, new_index)
         active_item.active_mod_index = new_index
         return {'FINISHED'}

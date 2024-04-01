@@ -7,7 +7,7 @@ from .. panels.draw_utils import draw_text_block
 
 
 from ..core.detection_manager import get_expression_name_double_entries
-from ..core.modifier_utils import add_faceit_armature_modifier, bind_valid_bake_modifiers, get_faceit_armature_modifier, reorder_armature_in_modifier_stack, restore_bake_modifiers, restore_modifier_order
+from ..core.modifier_utils import add_faceit_armature_modifier, bind_valid_bake_modifiers, get_faceit_armature_modifier, populate_bake_modifier_items, reorder_armature_in_modifier_stack, restore_bake_modifiers, restore_modifier_order
 from ..core.pose_utils import reset_pb
 from ..core import faceit_data as fdata
 from ..core import faceit_utils as futils
@@ -21,7 +21,7 @@ def get_load_action_items(self, context):
         ('TEST', 'Test', 'Load the shape key test action'),
         ('NONE', 'None', 'Do not load any action'),
     ]
-    if context.scene.faceit_mocap_action or context.scene.faceit_head_action:
+    if context.scene.faceit_mocap_action or context.scene.faceit_head_action or context.scene.faceit_eye_action:
         items.insert(1, ('MOCAP', 'Mocap', 'Load the last motion capture action'))
     return items
 
@@ -140,34 +140,42 @@ class FACEIT_OT_GenerateShapekeys(bpy.types.Operator):
         # layout.use_property_decorate = False
         if not self.found_bake_modifiers:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Warning",
                 heading_icon='ERROR',
                 text='No active bake modifiers found on any of the registered objects. Please activate at least one bake modifier before baking.',
+                in_operator=True,
             )
             # box.label(text='No active bake modifiers.')
         else:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Bake Modifier Action",
-                heading_icon='MODIFIER_DATA'
+                heading_icon='MODIFIER_DATA',
+                in_operator=True,
             )
             row = box.row()
             row.prop(self, 'modifier_action', expand=True)
 
         box = draw_text_block(
+            context,
             layout,
             heading="Action",
-            heading_icon='ACTION'
+            heading_icon='ACTION',
+            in_operator=True,
         )
         row = box.row(align=True)
         row.prop(self, 'load_action', expand=True, icon='BLANK1')
 
         if self.arkit_expressions_found or self.a2f_expressions_found:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Target Shapes",
-                heading_icon='SHAPEKEY_DATA'
+                heading_icon='SHAPEKEY_DATA',
+                in_operator=True,
             )
             if self.arkit_expressions_found:
                 row = box.row()
@@ -177,24 +185,30 @@ class FACEIT_OT_GenerateShapekeys(bpy.types.Operator):
                 row.prop(self, 'init_a2f_shape_list', icon='BLANK1')
         if self.shapes_already_exist:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Some Shapes Already Exist",
-                heading_icon='ERROR'
+                heading_icon='ERROR',
+                in_operator=True,
             )
             row = box.row()
             row.prop(self, 'bake_duplicate_option', expand=True, icon='BLANK1')
         if self.faceit_original_rig:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Rig Options",
-                heading_icon='ARMATURE_DATA'
+                heading_icon='ARMATURE_DATA',
+                in_operator=True,
             )
             row = box.row()
             row.prop(self, 'keep_faceit_rig_active', icon='BLANK1')  # icon='ARMATURE_DATA')
         if self.auto_keying_enabled:
             box = draw_text_block(
+                context,
                 layout,
                 heading="Other",
+                in_operator=True,
             )
             row = box.row()
             row.prop(self, 'disable_auto_keying', icon='RADIOBUT_OFF')
@@ -212,6 +226,8 @@ class FACEIT_OT_GenerateShapekeys(bpy.types.Operator):
         if not self.faceit_action_found:
             self.report({'WARNING'}, 'No Action found on the Faceit Armature')
         bake_objects = futils.get_faceit_objects_list()
+        # Double check if the bake modifiers are populated...
+        populate_bake_modifier_items(bake_objects)
         bpy.ops.faceit.reset_expression_values()
 
         obj_settings = dict()
@@ -222,7 +238,6 @@ class FACEIT_OT_GenerateShapekeys(bpy.types.Operator):
         save_frame = scene.frame_current
         scene.frame_set(0)
         dg = context.evaluated_depsgraph_get()
-
         for obj_item in scene.faceit_face_objects:
             obj = scene.objects.get(obj_item.name)
             _show_vp_drivers = []
@@ -410,6 +425,8 @@ class FACEIT_OT_GenerateShapekeys(bpy.types.Operator):
                 bpy.ops.faceit.populate_action(action_name=scene.faceit_mocap_action.name, set_mocap_action=False)
             if scene.faceit_head_action:
                 bpy.ops.faceit.populate_head_action(action_name=scene.faceit_head_action.name, set_mocap_action=False)
+            if scene.faceit_eye_action:
+                bpy.ops.faceit.populate_eye_action(action_name=scene.faceit_eye_action.name, set_mocap_action=False)
         else:
             pass
         futils.restore_scene_state(context, state_dict)
@@ -498,9 +515,12 @@ class FACEIT_OT_BackToRigging(bpy.types.Operator):
         head_obj = scene.faceit_head_target_object
         if head_obj is not None:
             if head_obj.animation_data is not None:
-                if head_obj.animation_data.action == scene.faceit_head_action:
-                    # Remove head animation.
-                    bpy.ops.faceit.populate_head_action(remove_action=True, set_mocap_action=False)
+                head_action = head_obj.animation_data.action
+                if head_action is not None:
+                    if head_action.name not in ('overwrite_shape_action', 'faceit_shape_action'):
+                        context.scene.faceit_head_action = head_action
+                        head_obj.animation_data.action = None
+                        bpy.ops.faceit.reset_head_pose()
         # Remove shape key animation.
         bpy.ops.faceit.populate_action(remove_action=True, set_mocap_action=False)
         # Restore corrective shape key functionality

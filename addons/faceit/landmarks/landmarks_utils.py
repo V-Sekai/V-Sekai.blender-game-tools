@@ -1,8 +1,13 @@
 import bpy
-from math import pi as PI
-from mathutils import Matrix, Quaternion
+from mathutils import Quaternion
 
 from ..core.mesh_utils import get_object_center
+
+
+def is_landmarks_active(lm_obj):
+    if lm_obj is None:
+        return False
+    return not (lm_obj.hide_viewport or lm_obj.hide_get())
 
 
 def check_is_quad_view(area):

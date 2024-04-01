@@ -1,7 +1,6 @@
 from bpy.props import (BoolProperty, EnumProperty, PointerProperty,
                        StringProperty)
 from bpy.types import PropertyGroup, Scene
-from ..core.faceit_utils import is_faceit_original_armature
 
 workspace_tab_dict = {
     'ALL': (
@@ -30,11 +29,9 @@ workspace_tab_dict = {
 
 def _get_tab_items_from_workspace(self, context):
     workspaces = workspace_tab_dict[self.workspace]
-    rig = context.scene.faceit_armature
-    if rig is not None:
-        if not is_faceit_original_armature(rig):
-            rig_tab_item = ('CREATE', 'Rig', 'Create Tab')
-            return [x for x in workspaces if x != rig_tab_item]
+    if context.scene.faceit_use_existing_armature:
+        # remove the create tab
+        workspaces = [w for w in workspaces if w[0] != 'CREATE']
     return workspaces
 
 
@@ -72,7 +69,6 @@ class PinPanels(PropertyGroup):
     # Bake Panel (Utils)
     FACEIT_PT_BakeExpressions: BoolProperty()
     FACEIT_PT_ShapeKeyUtils: BoolProperty()
-    FACEIT_PT_Finalize: BoolProperty()
     FACEIT_PT_RigUtils: BoolProperty()
     FACEIT_PT_Other: BoolProperty()
     # ARKit Shapes
@@ -88,7 +84,9 @@ class PinPanels(PropertyGroup):
     # Mocap
     FACEIT_PT_MocapUtils: BoolProperty()
     FACEIT_PT_MocapImporters: BoolProperty()
-    FACEIT_PT_MocapOSC: BoolProperty()
+    FACEIT_PT_MocapLive: BoolProperty()
+    FACEIT_PT_MocapSetup: BoolProperty()
+    FACEIT_PT_RetargetFBX: BoolProperty()
 
     def get_pin(self, panel_idname):
         return getattr(self, panel_idname, 0)

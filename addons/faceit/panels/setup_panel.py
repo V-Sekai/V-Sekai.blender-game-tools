@@ -4,10 +4,7 @@ from bpy.props import StringProperty
 
 from ..core import faceit_utils as futils
 from ..core import vgroup_utils as vg_utils
-from . import draw_utils
-from .ui import FACEIT_PT_Base, FACEIT_PT_BaseSub
-
-from ..setup.assign_groups_operators import is_picker_running
+from .ui import FACEIT_PT_Base
 
 
 class FACEIT_PT_BaseSetup(FACEIT_PT_Base):
@@ -18,6 +15,7 @@ class FACEIT_PT_SetupRegister(FACEIT_PT_BaseSetup, bpy.types.Panel):
     bl_label = 'Register Objects'
     bl_idname = 'FACEIT_PT_SetupRegister'
     bl_options = set()
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/setup/#register-geometry"
 
     @classmethod
     def poll(cls, context):
@@ -62,7 +60,7 @@ class FACEIT_PT_SetupRegister(FACEIT_PT_BaseSetup, bpy.types.Panel):
             row = col.row(align=True)
             op = row.operator('faceit.add_facial_part', icon='ADD')
             row = col.row(align=True)
-            if scene.faceit_workspace.workspace != 'MOCAP' and not scene.faceit_use_rigify_armature:
+            if scene.faceit_workspace.workspace != 'MOCAP' and not scene.faceit_use_existing_armature:
                 row = col.row(align=True)
                 op = row.operator('faceit.face_object_warning_check', text='Check Geometry', icon='CHECKMARK')
                 op.item_name = 'ALL'
@@ -74,69 +72,21 @@ class FACEIT_PT_SetupRegister(FACEIT_PT_BaseSetup, bpy.types.Panel):
             row.label(text="Existing Rig")
             row = col.row(align=True)
             row.prop(scene, "faceit_body_armature", text="", icon='ARMATURE_DATA')
-            if scene.faceit_use_rigify_armature:  # or scene.faceit_eye_pivot_options == 'BONE_PIVOT'
+            if scene.faceit_use_existing_armature:  # or scene.faceit_eye_pivot_options == 'COPY_PIVOT'
                 row.enabled = False
-
-
-class FACEIT_PT_BodyRigSetup(FACEIT_PT_BaseSub, bpy.types.Panel):
-    bl_label = 'Existing Rig Settings'
-    bl_idname = 'FACEIT_PT_BodyRigSetup'
-    faceit_predecessor = 'FACEIT_PT_SetupRegister'
-    bl_parent_id = 'FACEIT_PT_SetupRegister'
-    bl_options = set()
-
-    @classmethod
-    def poll(cls, context):
-        if super().poll(context):
-            return context.scene.faceit_face_objects and context.scene.faceit_body_armature
-
-    def draw(self, context):
-        layout = self.layout
-        scene = context.scene
-        col = layout.column(align=True)
-        row = col.row(align=True)
-        if scene.faceit_body_armature:
-            row = col.row(align=True)
-            row.prop(scene.faceit_body_armature.data, "pose_position", expand=True)
-            if scene.faceit_workspace.workspace != 'MOCAP':
-                col.separator()
-                if context.scene.faceit_is_rigify_armature:
+            if scene.faceit_body_armature:
+                row = col.row(align=True)
+                row.prop(scene.faceit_body_armature.data, "pose_position", expand=True)
+                if scene.faceit_workspace.workspace != 'MOCAP':
+                    col.separator()
                     row = col.row(align=True)
-                    row.prop(scene, 'faceit_use_rigify_armature', icon='ARMATURE_DATA')
-                if not scene.faceit_use_rigify_armature:
-                    draw_utils.draw_anime_style_eyes(col, scene)
-
-
-def draw_assign_group_options(row, grp_name, grp_name_ui, can_pick=False):
-    vgroup_props = bpy.context.scene.faceit_vertex_groups
-    grp_prop = vgroup_props.get('faceit_' + grp_name)
-    is_assigned = grp_prop.is_assigned
-    is_masked = grp_prop.is_masked
-    mask_inverted = grp_prop.mask_inverted
-    is_drawn = grp_prop.is_drawn
-    if can_pick:
-        row.operator('faceit.assign_main', text=grp_name_ui, icon='GROUP_VERTEX')
-        picker_running = is_picker_running()
-        row.operator('faceit.assign_main_modal', text='', icon='EYEDROPPER', depress=picker_running)
-    else:
-        row.operator('faceit.assign_group', text=grp_name_ui,
-                     icon='GROUP_VERTEX').vertex_group = grp_name
-    sub = row.row(align=True)
-    sub.enabled = is_assigned
-    op = sub.operator('faceit.draw_faceit_vertex_group', text='',
-                      icon='HIDE_OFF', depress=is_drawn)
-    op.faceit_vertex_group_name = 'faceit_' + grp_name
-    op = sub.operator('faceit.mask_group', text='', icon='MOD_MASK',
-                      depress=is_masked)
-    op.vgroup_name = 'faceit_' + grp_name
-    op.operation = 'REMOVE' if is_masked else 'ADD'
-    if is_masked:
-        op = sub.operator('faceit.mask_group', text='', icon='ARROW_LEFTRIGHT',
-                          depress=mask_inverted)
-        op.vgroup_name = 'faceit_' + grp_name
-        op.operation = 'INVERT'
-    sub.operator('faceit.remove_faceit_groups', text='',
-                 icon='X').vgroup_name = 'faceit_' + grp_name
+                    row.prop(scene, 'faceit_use_existing_armature', icon='ARMATURE_DATA')
+                    if scene.faceit_use_existing_armature:
+                        row = col.row(align=True)
+                        row.operator("faceit.register_control_bones",
+                                     text="Register Control Bones (Pose Mode)", icon='ADD')
+                        row.operator("faceit.select_control_bones", text="", icon='RESTRICT_SELECT_OFF')
+                        row.operator("faceit.clear_control_bones", text="", icon='X')
 
 
 class FACEIT_PT_SetupVertexGroups(FACEIT_PT_BaseSetup, bpy.types.Panel):
@@ -145,94 +95,180 @@ class FACEIT_PT_SetupVertexGroups(FACEIT_PT_BaseSetup, bpy.types.Panel):
     bl_options = set()
     faceit_predecessor = 'FACEIT_PT_SetupRegister'
     UI_WORKSPACES = ('ALL', 'RIG')
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/setup/#assign-vertex-groups"
+
+    def __init__(self):
+        super().__init__()
+        self.faceit_predecessor = 'FACEIT_PT_SetupRegister'
+        self.mask_modifiers = {}
+        self.assigned_vertex_groups = []
 
     @classmethod
     def poll(cls, context):
         if super().poll(context):
             if context.scene.faceit_face_objects:
-                return not context.scene.faceit_use_rigify_armature
+                return not context.scene.faceit_use_existing_armature
+
+    def draw_assign_group_options(self, row, grp_name, grp_name_ui, can_pick=True, is_pivot_group=False, picker_running=False):
+        # vgroup_names = get_list_faceit_groups()
+        faceit_grp_name = 'faceit_' + grp_name
+        is_assigned = faceit_grp_name in self.assigned_vertex_groups
+        is_masked = f"Mask {faceit_grp_name}" in self.mask_modifiers
+        mask_inverted = self.mask_modifiers.get(f"Mask {faceit_grp_name}", False)
+        is_drawn = False
+        single_surface = False
+        additive_group = False
+        if 'main' in grp_name:
+            row.operator('faceit.assign_main', text=grp_name_ui, icon='GROUP_VERTEX')
+            single_surface = True
+            additive_group = True
+        else:
+            op = row.operator('faceit.assign_group', text=grp_name_ui,
+                              icon='GROUP_VERTEX')
+            op.vertex_group = grp_name
+            op.is_pivot_group = is_pivot_group
+        if can_pick:
+            op = row.operator('faceit.vertex_group_picker', text='', icon='EYEDROPPER', depress=picker_running)
+            op.vertex_group_name = grp_name
+            op.single_surface = single_surface
+            op.additive_group = additive_group
+        sub = row.row(align=True)
+        sub.enabled = is_assigned
+        op = sub.operator('faceit.draw_faceit_vertex_group', text='',
+                          icon='HIDE_OFF', depress=is_drawn)
+        op.faceit_vertex_group_name = 'faceit_' + grp_name
+        op = sub.operator('faceit.mask_group', text='', icon='MOD_MASK',
+                          depress=is_masked)
+        op.vgroup_name = 'faceit_' + grp_name
+        op.operation = 'REMOVE' if is_masked else 'ADD'
+        if is_masked:
+            op = sub.operator('faceit.mask_group', text='', icon='ARROW_LEFTRIGHT',
+                              depress=mask_inverted)
+            op.vgroup_name = 'faceit_' + grp_name
+            op.operation = 'INVERT'
+        sub.operator('faceit.remove_faceit_groups', text='',
+                     icon='X').vgroup_name = 'faceit_' + grp_name
+
+    def get_all_mask_modifiers(self, objects):
+        mask_modifiers = {}
+        for obj in objects:
+            for mod in obj.modifiers:
+                if mod.type == 'MASK':
+                    if 'faceit' in mod.name:
+                        mask_modifiers[mod.name] = mod.invert_vertex_group
+                        continue
+        return mask_modifiers
 
     def draw(self, context):
         layout = self.layout
+        objects = futils.get_faceit_objects_list()
+        self.assigned_vertex_groups = vg_utils.get_assigned_faceit_vertex_groups(objects=objects)
+        self.mask_modifiers = self.get_all_mask_modifiers(objects=objects)
+        box = layout.box()
+        coll_pick = box.column(align=True)
+        picker_options = context.scene.faceit_picker_options
+        picking_group = picker_options.picking_group
+        row = coll_pick.row(align=True)
+        row.label(text='Picker Options', icon='EYEDROPPER')
+        row = coll_pick.row(align=True)
+        row.prop(picker_options, 'pick_geometry', expand=True)
+        row = coll_pick.row(align=True)
+        row.prop(picker_options, 'hide_assigned', icon='HIDE_OFF', toggle=True)
         box = layout.box()
         col_main = box.column(align=True)
         row = col_main.row(align=True)
         row.label(text='Face Main (Mandatory)')
         row = col_main.row(align=True)
+        row = col_main.row(align=True)
 
-        draw_assign_group_options(row, 'main', 'Main', can_pick=True)
+        self.draw_assign_group_options(
+            row,
+            'main',
+            'Main',
+            can_pick=True,
+            picker_running=picking_group == 'main',
+        )
         box = layout.box()
         col = box.column(align=True)
         separate_factor = .3
+        col.separator(factor=separate_factor)
+        col.label(text='Eyes (Eyeballs, Cornea, Iris, Spots, Highlights)')
 
-        if context.scene.faceit_use_eye_pivots:
-            col.separator(factor=separate_factor)
-            col.label(text='Eyes (Eyeballs, Cornea, Iris, Spots, Highlights)')
+        grid = col.grid_flow(columns=2, align=False)
+        row = grid.row(align=True)
+        self.draw_assign_group_options(row, 'right_eyes_other', 'Right Eye',
+                                       is_pivot_group=True, picker_running=picking_group == 'right_eyes_other')
 
-            grid = col.grid_flow(columns=2, align=False)
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'right_eyeball', 'Right Eye')
-
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'left_eyeball', 'Left Eye')
-        else:
-            col.separator(factor=separate_factor)
-            col.label(text='Eyeballs')
-
-            grid = col.grid_flow(columns=2, align=False)
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'right_eyeball', 'Right Eyeball')
-
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'left_eyeball', 'Left Eyeball')
-
-            # Other Eyes
-            col.separator(factor=separate_factor)
-            col.label(text='Cornea, Iris, Spots, Highlights')
-
-            grid = col.grid_flow(columns=2, align=False)
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'right_eyes_other', 'Other Right')
-
-            row = grid.row(align=True)
-            draw_assign_group_options(row, 'left_eyes_other', 'Other Left')
+        row = grid.row(align=True)
+        self.draw_assign_group_options(row, 'left_eyes_other', 'Left Eye', is_pivot_group=True,
+                                       picker_running=picking_group == 'left_eyes_other')
 
         col.separator(factor=separate_factor)
         col.label(text='Teeth, Gum')
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'upper_teeth', 'Upper Teeth')
+        self.draw_assign_group_options(
+            row,
+            'upper_teeth',
+            'Upper Teeth',
+            picker_running=picking_group == 'upper_teeth'
+        )
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'lower_teeth', 'Lower Teeth')
+        self.draw_assign_group_options(
+            row,
+            'lower_teeth',
+            'Lower Teeth',
+            picker_running=picking_group == 'lower_teeth'
+        )
 
         # Tongue
         col.separator(factor=separate_factor)
         col.label(text='Tongue')
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'tongue', 'Tongue')
+        self.draw_assign_group_options(
+            row,
+            'tongue',
+            'Tongue',
+            picker_running=picking_group == 'tongue'
+        )
 
         # Eyelashes
         col.separator(factor=separate_factor)
         col.label(text='Eyelashes, Eyeshells, Tearlines')
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'eyelashes', 'Eyelashes')
+        self.draw_assign_group_options(
+            row,
+            'eyelashes',
+            'Eyelashes',
+            picker_running=picking_group == 'eyelashes'
+        )
 
         # Facial Hair
         col.separator(factor=separate_factor)
         col.label(text='Eyebrows, Beards, Facial Hair etc.')
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'facial_hair', 'Facial Hair')
+        self.draw_assign_group_options(
+            row,
+            'facial_hair',
+            'Facial Hair',
+            picker_running=picking_group == 'facial_hair'
+        )
 
         # Rigid
         col.separator(factor=separate_factor)
         col.label(text='Rigid, No Deform')
 
         row = col.row(align=True)
-        draw_assign_group_options(row, 'rigid', 'Rigid')
+        self.draw_assign_group_options(
+            row,
+            'rigid',
+            'Rigid',
+            picker_running=picking_group == 'rigid'
+        )
 
         if context.object:
             if context.object.mode != 'OBJECT':
@@ -244,11 +280,8 @@ class FACEIT_PT_SetupVertexGroups(FACEIT_PT_BaseSetup, bpy.types.Panel):
         row = col_utils.row(align=True)
         row.label(text='Utilities')
         row = col_utils.row(align=True)
-        vgroup_props = bpy.context.scene.faceit_vertex_groups
-        grp_prop = vgroup_props.get('UNASSIGNED')
-        is_drawn = grp_prop.is_drawn
         row.operator('faceit.draw_faceit_vertex_group', text='Show Unassigned',
-                     icon='HIDE_OFF', depress=is_drawn).faceit_vertex_group_name = 'UNASSIGNED'
+                     icon='HIDE_OFF', depress=False).faceit_vertex_group_name = 'UNASSIGNED'
         col_utils.separator()
         row = col_utils.row(align=True)
         row.operator('faceit.remove_all_faceit_groups', text='Reset All', icon='TRASH')

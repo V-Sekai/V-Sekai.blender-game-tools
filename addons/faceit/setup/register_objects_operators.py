@@ -64,6 +64,8 @@ class FACEIT_OT_AddFacialPart(bpy.types.Operator):
                 # set active index to new item
             if body_rig_counter:
                 scene.faceit_body_armature = max(body_rig_counter, key=body_rig_counter.get)
+        # Register vertex groups
+
         # Find target shapes
         bpy.ops.faceit.init_retargeting('EXEC_DEFAULT', quick_search=True)
         return {'FINISHED'}

@@ -65,13 +65,15 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
         name='Bake to Control Rig',
         default=False,
         description='Loads the mocap action directly on the control rig. Creates a temp Action with the 52 Shape Keys.',
-        options={'SKIP_SAVE', }
     )
     show_advanced_settings: BoolProperty(
         name='Show Advanced Settings',
         default=False,
         description='Blend in the advanced settings for this operator'
     )
+
+    def __init__(self):
+        self.can_bake_to_control_rig = False
 
     @classmethod
     def poll(cls, context):
@@ -81,7 +83,6 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
         return retarget_fbx_props.mapping_list
 
     def invoke(self, context, event):
-
         retarget_fbx_props = context.scene.faceit_retarget_fbx_mapping
         source_action = None
         if retarget_fbx_props.mapping_source == 'OBJECT':
@@ -89,12 +90,24 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
             if sk_utils.has_shape_keys(source_obj):
                 if source_obj.data.shape_keys.animation_data:
                     source_action = source_obj.data.shape_keys.animation_data.action
+                    if source_action is None:
+                        self.report({'ERROR'}, f'The object {source_obj.name} has no shape key action to retarget.')
+                        return {'CANCELLED'}
         else:
             source_action = retarget_fbx_props.source_action
-
+            if source_action is None:
+                self.report({'You need to register a source action that contains shape key data.'})
+                return {'CANCELLED'}
         if any(['key_block' in fc.data_path for fc in source_action.fcurves]):
             self.new_name = source_action.name + '_retargeted'
             self.retarget_action = source_action.name
+        else:
+            self.report({f'The source action {source_action.name} contains no shape key data.'})
+            return {'CANCELLED'}
+        if retarget_fbx_props.mapping_target == 'CRIG':
+            self.can_bake_to_control_rig = bool(futils.get_faceit_control_armature())
+            if self.can_bake_to_control_rig:
+                self.bake_to_control_rig = True
 
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
@@ -110,7 +123,7 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
         row = layout.row()
         row.prop(self, 'new_name', icon='ACTION')
 
-        if futils.get_faceit_control_armature():
+        if self.can_bake_to_control_rig:
             row = layout.row()
             row.prop(self, 'bake_to_control_rig', icon='CON_ARMATURE')
         if self.bake_to_control_rig:
@@ -139,7 +152,7 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
             self.report(
                 {'ERROR'},
                 'No source Action found. choose a valid Shape Keys Action! ')
-            return{'CANCELLED'}
+            return {'CANCELLED'}
 
         if self.bake_to_control_rig:
             c_rig = futils.get_faceit_control_armature()
@@ -147,7 +160,7 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
                 self.report(
                     {'ERROR'},
                     'Can\'t find the active control rig. Please create/choose control rig first or import directly to the meshes.')
-                return{'CANCELLED'}
+                return {'CANCELLED'}
 
             a_remove = bpy.data.actions.get('mocap_import')
             if a_remove:
@@ -208,42 +221,37 @@ class FACEIT_OT_RetargetFBXAction(bpy.types.Operator):
                     fc = target_action.fcurves.find(dp)
                     if fc:
                         target_action.fcurves.remove(fc)
-
-        if retargeted_any:
-            mapping_target = retarget_fbx_props.mapping_target
-            target_objects = []
-            if mapping_target == 'FACEIT':
-                target_objects = futils.get_faceit_objects_list()
-            elif mapping_target == 'CRIG':
-                c_rig = futils.get_faceit_control_armature()
-                if c_rig:
-                    target_objects = ctrl_utils.get_crig_objects_list(c_rig)
-            elif mapping_target == 'TARGET':
-                target_objects = [retarget_fbx_props.target_obj, ]
-
+        if not target_action.fcurves or not retargeted_any:
+            self.report(
+                {'ERROR'},
+                'The animation data could not be retargeted. Probably there is something wrong with the mapping or data.')
+            bpy.data.actions.remove(target_action)
+            return {'CANCELLED'}
+        mapping_target = retarget_fbx_props.mapping_target
+        target_objects = []
+        if mapping_target == 'FACEIT':
+            target_objects = futils.get_faceit_objects_list()
+        elif mapping_target == 'CRIG':
+            c_rig = futils.get_faceit_control_armature()
+            if c_rig:
+                target_objects = ctrl_utils.get_crig_objects_list(c_rig)
+        elif mapping_target == 'TARGET':
+            target_objects = [retarget_fbx_props.target_obj, ]
+        if self.bake_to_control_rig:
+            context.scene.faceit_bake_sk_to_crig_action = target_action
+            bpy.ops.faceit.bake_shape_keys_to_control_rig(
+                'INVOKE_DEFAULT',
+                new_action_name=self.new_name + CRIG_ACTION_SUFFIX,
+                compensate_amplify_values=True,
+            )
+            bpy.data.actions.remove(target_action)
+        else:
             for ob in target_objects:
                 if sk_utils.has_shape_keys(ob):
                     if not ob.data.shape_keys.animation_data:
                         ob.data.shape_keys.animation_data_create()
                     ob.data.shape_keys.animation_data.action = target_action
-
-            if self.bake_to_control_rig:
-                bpy.ops.faceit.bake_shape_keys_to_control_rig(
-                    'INVOKE_DEFAULT',
-                    action_source=target_action.name,
-                    action_target='NEW',
-                    new_action_name=self.new_name + CRIG_ACTION_SUFFIX,
-                    compensate_amplify_values=True,
-                    remove_sk_action=True,
-                )
-        else:
-            self.report(
-                {'ERROR'},
-                'Something went wrong during retargeting of the new action. Is the Mapping List initialized properly?')
-            bpy.data.actions.remove(target_action)
-
+        self.report({'INFO'}, "Succesfully retargeted the animation data.")
         for region in context.area.regions:
-            # if region.type == 'UI':
             region.tag_redraw()
-
-        return{'FINISHED'}
+        return {'FINISHED'}

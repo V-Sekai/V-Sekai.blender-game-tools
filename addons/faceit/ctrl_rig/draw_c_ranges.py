@@ -343,7 +343,10 @@ class FACEIT_OT_DrawCRanges(bpy.types.Operator):
                     col.extend((b_color,) * len(vertices_for_current_bone))
 
         # get built-in shader (GLSL)
-        shader = gpu.shader.from_builtin('3D_SMOOTH_COLOR')
+        if bpy.app.version < (4, 0, 0):
+            shader = gpu.shader.from_builtin('3D_SMOOTH_COLOR')
+        else:
+            shader = gpu.shader.from_builtin('SMOOTH_COLOR')
         # Uniforms are properties that are constant per draw call.
         # They can be set using the shader.uniform_* functions after the shader has been bound.
 

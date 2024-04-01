@@ -1,7 +1,4 @@
 import bpy
-import numpy as np
-from mathutils import Vector
-
 from .faceit_data import FACEIT_BONES
 
 
@@ -96,13 +93,20 @@ def duplicate_obj(obj, link=None):
     return new_obj
 
 
-def get_main_faceit_object():
+def get_main_faceit_object(clear_invalid_objects=True):
     '''Returns the main object (head or face)'''
-    faceit_objects = get_faceit_objects_list()
+    faceit_objects = get_faceit_objects_list(clear_invalid_objects=clear_invalid_objects)
     for obj in faceit_objects:
         if "faceit_main" in obj.vertex_groups:
             return obj
     return None
+
+
+def remove_item_from_collection_prop(collection, item):
+    '''Removes an @item from a given @collection'''
+    item = collection.find(item.name)
+    if item != -1:
+        collection.remove(item)
 
 
 def get_faceit_objects_list(clear_invalid_objects=True):
@@ -128,23 +132,6 @@ def get_faceit_objects_list(clear_invalid_objects=True):
     return faceit_objects
 
 
-def set_lock_3d_view_rotations(value):
-    '''Locks the viewport rotation from user input'''
-    for area in bpy.context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for space in area.spaces:
-                space.region_3d.lock_rotation = value
-
-
-def get_region_3d_space(context):
-    '''Returns the region 3d of the current view'''
-    for area in context.screen.areas:
-        if area.type == 'VIEW_3D':
-            for space in area.spaces:
-                if space.type == 'VIEW_3D':
-                    return space.region_3d
-
-
 def get_any_view_locked():
     '''Returns True if any view is locked'''
     locked = False
@@ -154,24 +141,6 @@ def get_any_view_locked():
                 if space.type == 'VIEW_3D':
                     locked = locked or space.region_3d.lock_rotation
     return locked
-
-
-def ui_refresh_properties():
-    '''Refreshes the properties panel'''
-    for windowManager in bpy.data.window_managers:
-        for window in windowManager.windows:
-            for area in window.screen.areas:
-                if area.type == 'PROPERTIES':
-                    area.tag_redraw()
-
-
-def ui_refresh_view_3d():
-    '''Refreshes the view 3D panel'''
-    for windowManager in bpy.data.window_managers:
-        for window in windowManager.windows:
-            for area in window.screen.areas:
-                if area.type == 'VIEW_3D':
-                    area.tag_redraw()
 
 
 def ui_refresh_all():
@@ -184,13 +153,6 @@ def ui_refresh_all():
                 area.tag_redraw()
 
 
-def remove_item_from_collection_prop(collection, item):
-    '''Removes an @item from a given @collection'''
-    item = collection.find(item.name)
-    if item != -1:
-        collection.remove(item)
-
-
 def find_collection_in_children(collection, name):
     ''' Recursively searches for a collection in the children of a collection'''
     if collection.name == name:
@@ -199,21 +161,6 @@ def find_collection_in_children(collection, name):
         found = find_collection_in_children(child, name)
         if found:
             return found
-
-
-# def traverse_tree(t):
-#     yield t
-#     for child in t.children:
-#         yield from traverse_tree(child)
-
-
-# def parent_lookup():
-#     parent_lookup_dict = {}
-#     coll = bpy.context.view_layer.layer_collection
-#     for coll in traverse_tree(coll):
-#         for c in coll.children.keys():
-#             parent_lookup_dict.setdefault(c, coll.name)
-#     return parent_lookup_dict
 
 
 def get_layer_collection(collection_name):
@@ -238,12 +185,6 @@ def get_faceit_collection(force_access=True, create=True):
         faceit_collection.hide_viewport = False
         faceit_layer_collection.exclude = False
         faceit_layer_collection.hide_viewport = False
-    # Print parent of active collection
-    # coll_parents = parent_lookup()
-    # print("Parent of {} is {}".format(
-    #     collection_name,
-    #     coll_parents.get(collection_name))
-    # )
     return faceit_collection
 
 
@@ -346,37 +287,26 @@ def get_rig_type(rig):
         @rig: the rig object
         Returns: 'FACEIT', 'RIGIFY', 'RIGIFY_NEW' or None
     """
-    rig = get_faceit_armature()
     if rig is None:
-        return None
-    if is_faceit_original_armature(rig):
-        return 'FACEIT'
-    # Is this a rigify structure?
-    if len(set((b.name for b in rig.data.bones)).intersection(FACEIT_BONES)) > len(FACEIT_BONES) // 4:
-        if "lip_end.L.001" in rig.pose.bones:
+        rig = get_faceit_armature()
+        if rig is None:
+            return None
+    # if is_faceit_original_armature(rig):
+    #     return 'FACEIT'
+    if 'ORG-face' in rig.data.bones or 'DEF-face' in rig.data.bones:
+        if any(b.name in ('lip_end.L.001', 'eye_common') for b in rig.data.bones):
             return 'RIGIFY_NEW'
         else:
             return 'RIGIFY'
-    return None
+    else:
+        return 'ANY'
 
 
 def is_faceit_original_armature(rig):
     '''Check if the Faceit Armature is created with Faceit.'''
     if rig.name == 'FaceitRig':
         return True
-    if all([b.name in FACEIT_BONES for b in rig.data.bones]):
-        return True
-    return False
-
-
-def is_rigify_armature(rig):
-    '''Check if the Armature is created with Rigify.'''
-    # print(len(set((b.name for b in rig.data.bones)).intersection(FACEIT_BONES)))
-    if 'rig_id' in rig.data:
-        if len(rig.data['rig_id']) == 16:
-            return True
-    # Check if at least half of the Faceit (Rigify) bones are in the armature.#
-    if len(set((b.name for b in rig.data.bones)).intersection(FACEIT_BONES)) > len(FACEIT_BONES) // 4:
+    if all([b.name in FACEIT_BONES for b in rig.data.bones]) or rig.get('faceit_rig_id'):
         return True
     return False
 
@@ -384,11 +314,9 @@ def is_rigify_armature(rig):
 def using_rigify_armature():
     '''Check if the user wants to use another Rigify face rig for generating the expressions.'''
     scene = bpy.context.scene
-    if not scene.faceit_use_rigify_armature:
-        return False
     rig = scene.faceit_armature
     if rig:
-        if is_rigify_armature(rig):
+        if get_rig_type(rig) in ('RIGIFY', 'RIGIFY_NEW'):
             return True
     return False
 
@@ -398,22 +326,6 @@ def is_armature_bound_to_registered_objects(rig):
     for obj in get_faceit_objects_list():
         if rig.name in [mod.object.name for mod in obj.modifiers if mod.type == 'ARMATURE' and mod.object is not None]:
             return True
-
-
-def get_median_pos(locations):
-    '''
-    returns the center of all points in locations
-    @locations : list of points (Vector3) in one space
-    '''
-    return Vector(np.mean(locations, axis=0).tolist())
-
-
-def exit_nla_tweak_mode(context):
-    '''exit the nla tweak mode (important for nla editor actions)'''
-    current_type = bpy.context.area.type
-    bpy.context.area.type = 'NLA_EDITOR'
-    bpy.ops.nla.tweakmode_exit()
-    bpy.context.area.type = current_type
 
 
 def save_scene_state(context):
@@ -439,7 +351,10 @@ def restore_scene_state(context, state_dict):
     obj = context.object
     if obj:
         if not (obj.hide_get() or obj.hide_viewport):
-            bpy.ops.object.mode_set(mode='OBJECT')
+            try:
+                bpy.ops.object.mode_set(mode='OBJECT')
+            except RuntimeError:
+                pass
     clear_object_selection()
     hidden_states = state_dict['hidden_states']
     selected_objects = state_dict['selected_objects']

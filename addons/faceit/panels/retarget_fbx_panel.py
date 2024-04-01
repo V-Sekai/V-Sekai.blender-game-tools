@@ -1,19 +1,20 @@
 
 import bpy
 
-from .ui import FACEIT_PT_BaseSub
+from .ui import FACEIT_PT_Base
 
 from ..core.retarget_list_base import (DrawTargetShapesListBase,
                                        TargetShapesListBase)
 from ..core.retarget_list_utils import get_index_of_collection_item
 
 
-class FACEIT_PT_RetargetFBX(FACEIT_PT_BaseSub, bpy.types.Panel):
+class FACEIT_PT_RetargetFBX(FACEIT_PT_Base, bpy.types.Panel):
     bl_label = 'Shape Key Retargeter (FBX)'
     bl_idname = 'FACEIT_PT_RetargetFBX'
-    bl_parent_id = 'FACEIT_PT_MocapUtils'
     # bl_options = set()
-    faceit_predecessor = 'FACEIT_PT_MocapMotionTargets'
+    faceit_predecessor = 'FACEIT_PT_MocapLive'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/fbx_retargeting/"
+    UI_TABS = ('MOCAP',)
 
     @classmethod
     def poll(cls, context):

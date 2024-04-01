@@ -305,7 +305,8 @@ def frame_value_pairs_to_numpy_array(frames, values):
     return np.array(list(zip(frames, values)))
 
 
-def populate_keyframe_points_from_np_array(fc, data, attr='co', add=False, join_with_existing=True):
+def populate_keyframe_points_from_np_array(
+        fc, data, attr='co', add=False, join_with_existing=True, overwrite_old_range=True):
     '''Populate Keyframe Points from a numpy array.'''
     result = False
     if not fc:
@@ -314,7 +315,7 @@ def populate_keyframe_points_from_np_array(fc, data, attr='co', add=False, join_
     if add:
         if len(fc.keyframe_points) > 0 and join_with_existing:
             existing_kf_data = kf_data_to_numpy_array(fc, attr=attr)
-            data = join_np_array_kf_data(existing_kf_data, data)
+            data = mix_kf_data_overwrite_range(existing_kf_data, data, overwrite_old_range=overwrite_old_range)
         clear_fcurve_kf_points(fc)
         count = data.shape[0]
         fc.keyframe_points.add(count=count)
@@ -335,18 +336,24 @@ def clear_fcurve_kf_points(fc):
         fc.keyframe_points.remove(kf, fast=True)
 
 
-def join_np_array_kf_data(kf_data_old, kf_data_new):
-    '''Joins two numpy arrays containing keyframe data. The intersection of both will be overwritten by kf_data_new'''
-    # Get all rows in first column --> frame values
-    new_frames = kf_data_new[:, 0]
-    # Create a mask to remove new_frames range from the old data
-    mask = ((kf_data_old < min(new_frames)) | (kf_data_old > max(new_frames))).all(axis=1)
-
-    kf_data_old = kf_data_old[mask, :]
-
+def mix_kf_data_overwrite_range(kf_data_old, kf_data_new, overwrite_old_range=True):
+    '''Joins two numpy arrays containing keyframe data. 
+        if @overwrite_old_range: The intersection of both will be overwritten by kf_data_new,
+        in other words: the frame range of new data will overwrite all values in the old data.
+    '''
+    if overwrite_old_range:
+        # Get all rows in first column --> frame values
+        new_frames = kf_data_new[:, 0]
+        # Create a mask to remove new_frames range from the old data
+        mask = ((kf_data_old < min(new_frames)) | (kf_data_old > max(new_frames))).all(axis=1)
+        kf_data_old = kf_data_old[mask, :]
     final_kf_data = np.vstack((kf_data_old, kf_data_new))
-
     return final_kf_data
+
+
+def mix_kf_data(kf_data_old, kf_data_new):
+    data = np.vstack([kf_data_old, kf_data_new])
+    return data
 
 
 def sampled_points_to_numpy_array(fc, attr='sampled_points'):
@@ -368,8 +375,6 @@ def sampled_points_to_numpy_array(fc, attr='sampled_points'):
 
 def get_fcurve_properties(fc):
     ''' Fcurve Properties in a Dictionary format '''
-    fc_data_dict = {}
-
     fc_data_dict = {
         'dp': fc.data_path,
         'select': fc.select,
@@ -379,16 +384,15 @@ def get_fcurve_properties(fc):
         'array_index': fc.array_index,
         'auto_smoothing': fc.auto_smoothing,
         'hide': fc.hide,
-        'color': fc.color,
+        'color': fc.color.copy(),
         'color_mode': fc.color_mode,
         'group': fc.group,
     }
-
     return fc_data_dict
 
 
 def populate_fcurve_properties(fc, fc_data_dict):
-
+    '''Load the fcurve properties from the stored data dict.'''
     fc.auto_smoothing = fc_data_dict.get('auto_smoothing', fc.auto_smoothing)
     fc.color = fc_data_dict.get('color', fc.color)
     fc.color_mode = fc_data_dict.get('color_mode', fc.color_mode)

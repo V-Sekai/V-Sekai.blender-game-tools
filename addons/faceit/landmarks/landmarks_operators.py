@@ -9,18 +9,18 @@ from bpy_extras.view3d_utils import (
     region_2d_to_location_3d)
 from mathutils import Matrix, Vector
 
+
+from . import landmarks_data as lm_data
 from .landmarks_utils import check_if_area_is_active, set_front_view, check_is_quad_view, unlock_3d_view
-
+# from ..rigging.pivot_manager import PivotManager, set_locator_hidden_state
 from ..core.mesh_utils import get_max_dim_in_direction, select_vertices
-
 from ..panels.draw_utils import draw_text_block
-
 from ..core import faceit_data as fdata
 from ..core import faceit_utils as futils
 from ..core import shape_key_utils as sk_utils
 from ..core import vgroup_utils as vg_utils
 from ..rigging import rig_utils
-from . import landmarks_data as lm_data
+from ..rigging.pivot_manager import PivotManager
 
 
 class FACEIT_OT_FacialLandmarks(bpy.types.Operator):
@@ -92,7 +92,7 @@ class FACEIT_OT_FacialLandmarks(bpy.types.Operator):
         if main_obj is None:
             self.report({'ERROR'}, 'Please assign the Main Vertex Group to the Face Mesh! (Setup Tab)')
             return {'CANCELLED'}
-        futils.set_active_object(main_obj.name)
+        futils.set_hidden_state_object(main_obj, False, False)
         area = context.area
         for space in area.spaces:
             if space.type == 'VIEW_3D':
@@ -104,8 +104,11 @@ class FACEIT_OT_FacialLandmarks(bpy.types.Operator):
         if check_is_quad_view(area):
             bpy.ops.screen.region_quadview()
         # Frame the main vertex group.
+        if not context.object:
+            futils.set_active_object(main_obj)
+        futils.set_active_object(main_obj.name)
         vs = vg_utils.get_verts_in_vgroup(main_obj, 'faceit_main')
-        select_vertices(main_obj, vs, deselect_others=True)
+        select_vertices(main_obj, [v.index for v in vs], deselect_others=True)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.view3d.view_selected(use_all_regions=False)
         bpy.ops.view3d.view_axis(type='FRONT')
@@ -139,8 +142,18 @@ class FACEIT_OT_FacialLandmarks(bpy.types.Operator):
         if lm_obj:
             lm_obj["state"] = 0
         # Set scale to main obj height. Main obj can be a body mesh at this point.
+        disabled_mods = []
+        for mod in main_obj.modifiers:
+            if not mod.show_viewport:
+                continue
+            if mod.type in fdata.GENERATORS:
+                disabled_mods.append(mod)
+                mod.show_viewport = False
+        context.evaluated_depsgraph_get().update()
         vgroup_positions = rig_utils.get_evaluated_vertex_group_positions(main_obj, 'faceit_main')
         bounds = rig_utils.get_bounds_from_locations(vgroup_positions, 'z')
+        for mod in disabled_mods:
+            mod.show_viewport = True
         z_dim = bounds[0][2] - bounds[1][2]
         lm_obj.dimensions[2] = z_dim / 2
         lm_obj.scale = [lm_obj.scale[2], ] * 3
@@ -390,11 +403,17 @@ class FACEIT_OT_ResetFacial(bpy.types.Operator):
             bpy.data.objects.remove(obj)
 
         # Remove locators
-        bpy.ops.faceit.edit_locator_empties('EXEC_DEFAULT', hide_value=True)
-        # bpy.ops.faceit.edit_locator_empties('EXEC_DEFAULT', remove=True)
+        # set_locator_hidden_state(hide=True)
         bpy.ops.faceit.unlock_3d_view()
         context.scene.tool_settings.use_snap = False
-
+        # PivotManager.remove_handle()
+        jaw_pivot_object = context.scene.objects.get('Jaw Pivot')
+        if jaw_pivot_object:
+            # context.scene.faceit_use_jaw_pivot = True
+            context.scene.faceit_jaw_pivot = jaw_pivot_object.location
+            bpy.data.objects.remove(jaw_pivot_object)
+        # Reset the eye pivots
+        PivotManager.reset_pivots(context)
         return {'FINISHED'}
 
 
@@ -402,7 +421,7 @@ class FACEIT_OT_ProjectLandmarks(bpy.types.Operator):
     '''Project the Landmarks onto the Main Object. (Make sure you assigned to Main Vertex Group correctly) '''
     bl_idname = 'faceit.project_landmarks'
     bl_label = 'Project Landmarks'
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {'REGISTER', 'UNDO_GROUPED'}
     mouse_x: bpy.props.IntProperty()
     mouse_y: bpy.props.IntProperty()
 
@@ -456,10 +475,11 @@ class FACEIT_OT_ProjectLandmarks(bpy.types.Operator):
         obj_origin = lm_obj.matrix_world @ lm_obj.data.vertices[chin_vert].co
         context.scene.cursor.location = obj_origin
         # bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
-        scene.tool_settings.use_snap = True
-        scene.tool_settings.snap_elements = {'FACE'}
-        scene.tool_settings.snap_target = 'CLOSEST'
-        scene.tool_settings.use_snap_project = True
+        _reset_snap_settings(context)
+        # scene.tool_settings.use_snap = True
+        # scene.tool_settings.snap_elements = {'FACE'}
+        # scene.tool_settings.snap_target = 'CLOSEST'
+        # scene.tool_settings.use_snap_project = True
 
         # get vert positions after projecting
         vert_pos_after = [Vector(round(x, 3) for x in v.co) for v in lm_obj.data.vertices]
@@ -478,6 +498,16 @@ class FACEIT_OT_ProjectLandmarks(bpy.types.Operator):
 
         bpy.ops.ed.undo_push()
         lm_obj["state"] = 4
+        PivotManager.symmetric = not scene.faceit_asymmetric
+        found_pos = PivotManager.initialize_pivots(context)
+        if not found_pos:
+            self.report(
+                {'WARNING'},
+                " Pivot points are only estimated. Please assign the eyeball vertex groups or use manual placement.")
+        if scene.faceit_eye_pivot_placement == 'MANUAL':
+            bpy.ops.faceit.add_manual_pivot_vertex('EXEC_DEFAULT', select_vertex=False)
+        PivotManager.start_drawing(context, initialize=True)
+        # bpy.ops.faceit.draw_pivot_point('INVOKE_DEFAULT')
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.faceit.unmask_main('EXEC_DEFAULT')
         return {'FINISHED'}
@@ -511,6 +541,7 @@ class FACEIT_OT_RevertProjection(bpy.types.Operator):
         # bpy.ops.ed.undo_push()
         lm_obj["state"] -= 1
         bpy.ops.faceit.lock_3d_view_front('INVOKE_DEFAULT')
+        # PivotManager.remove_handle()
         return {'FINISHED'}
 
 
@@ -602,6 +633,22 @@ class FACEIT_OT_Unlock3DView(bpy.types.Operator):
         return {'FINISHED'}
 
 
+def _reset_snap_settings(context):
+    scene = context.scene
+    scene.tool_settings.use_snap = True
+    scene.tool_settings.snap_elements = {'FACE'}
+    scene.tool_settings.snap_target = 'CLOSEST'
+    scene.tool_settings.use_snap_translate = True
+    scene.tool_settings.use_snap_rotate = True
+    scene.tool_settings.use_snap_scale = True
+    if bpy.app.version[0] < 4:
+        scene.tool_settings.use_snap_project = True
+    else:
+        scene.tool_settings.use_snap_time_absolute = True
+        scene.tool_settings.snap_elements_individual = {'FACE_PROJECT'}
+        scene.tool_settings.use_snap_backface_culling = True
+
+
 class FACEIT_OT_ResetSnapSettings(bpy.types.Operator):
     '''Set the correct Snap to Face Settings automatically.'''
     bl_idname = 'faceit.reset_snap_settings'
@@ -613,14 +660,15 @@ class FACEIT_OT_ResetSnapSettings(bpy.types.Operator):
 
     def draw(self, context):
         layout = self.layout
-        draw_text_block(layout, text="Reset to optimal Snap to Face Settings?")
+        draw_text_block(
+            context,
+            layout,
+            text="Reset to optimal Snap to Face Settings?",
+            in_operator=True,
+        )
 
     def execute(self, context):
-        scene = context.scene
-        scene.tool_settings.use_snap = True
-        scene.tool_settings.snap_elements = {'FACE'}
-        scene.tool_settings.snap_target = 'CLOSEST'
-        scene.tool_settings.use_snap_project = True
+        _reset_snap_settings(context)
         return {'FINISHED'}
 
 
@@ -761,7 +809,6 @@ class FACEIT_OT_ResetToLandmarks(bpy.types.Operator):
             if ow_action:
                 ow_action.use_fake_user = True
             context.scene.faceit_expressions_restorable = True
-
         else:
             if sh_action:
                 bpy.data.actions.remove(sh_action)
@@ -769,7 +816,8 @@ class FACEIT_OT_ResetToLandmarks(bpy.types.Operator):
                 bpy.data.actions.remove(ow_action)
             context.scene.faceit_expression_list.clear()
             context.scene.faceit_expressions_restorable = False
-
+        # Set eye locator visibility
+        # set_locator_hidden_state(target_locators='EYE',hide=False)
         if self.corr_sk:
             faceit_objects = futils.get_faceit_objects_list()
             corrective_sk_action = bpy.data.actions.get('faceit_corrective_shape_keys', None)
@@ -797,7 +845,6 @@ class FACEIT_OT_ResetToLandmarks(bpy.types.Operator):
         bpy.data.objects.remove(rig)
         # turn on landmarks visibility
         lm = bpy.data.objects.get('facial_landmarks')
-        # bpy.ops.faceit.edit_locator_empties('EXEC_DEFAULT', hide_value=False)
         if lm:
             futils.set_hidden_state_object(lm, False, False)
         else:
@@ -807,6 +854,9 @@ class FACEIT_OT_ResetToLandmarks(bpy.types.Operator):
         bpy.ops.outliner.orphans_purge()
         scene.tool_settings.use_snap = True
         scene.tool_settings.mesh_select_mode = (True, False, False)
+        # lm_obj = bpy.data.objects.get('facial_landmarks')
+        if context.scene.faceit_use_jaw_pivot:
+            bpy.ops.faceit.add_jaw_pivot_empty('EXEC_DEFAULT', restore_saved_pivot=True)
         return {'FINISHED'}
 
 
@@ -832,6 +882,8 @@ class FACEIT_OT_EditLandmarks(bpy.types.Operator):
             #     context.view_layer.objects.active = lm
             bpy.ops.object.mode_set(mode='OBJECT')
         # else:
+        PivotManager.start_drawing(context)
+        # bpy.ops.faceit.draw_pivot_point('INVOKE_DEFAULT')
         futils.clear_object_selection()
         futils.set_active_object(lm.name)
         bpy.ops.object.mode_set(mode='EDIT')
@@ -851,17 +903,6 @@ class FACEIT_OT_FinishEditLandmarks(bpy.types.Operator):
             return context.object.name == 'facial_landmarks' and context.mode == 'EDIT_MESH'
 
     def execute(self, context):
-        scene = context.scene
-
-        lm = bpy.data.objects.get('facial_landmarks')
-        # rig = futils.get_faceit_armature(force_original=True)
-        # if rig:
-        # bpy.ops.faceit.edit_locator_empties('EXEC_DEFAULT', hide_value=True)
-
-        # turn off landmarks visibility
-        # if lm:
-        #     futils.set_hidden_state_object(lm, True, False)
-
         bpy.ops.faceit.unmask_main('EXEC_DEFAULT')
         bpy.ops.object.mode_set(mode='OBJECT')
         return {'FINISHED'}

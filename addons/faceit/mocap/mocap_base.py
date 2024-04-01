@@ -1,4 +1,6 @@
 
+import csv
+import json
 import math
 import os
 from math import radians
@@ -6,21 +8,24 @@ from pathlib import PurePath
 
 import bpy
 import numpy as np
-from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty
-from bpy.types import Object
+from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty, FloatProperty
+from bpy.types import Object, Action
 from mathutils import Euler, Vector, Quaternion, Matrix
 
+
+from ..core.faceit_data import get_a2f_shape_data, get_arkit_shape_data
 from ..core import faceit_utils as futils
 from ..core.fc_dr_utils import (frame_value_pairs_to_numpy_array,
                                 populate_keyframe_points_from_np_array)
-from ..core.pose_utils import get_edit_bone_roll
+from ..core.pose_utils import reset_pb, reset_pose, restore_saved_pose, save_pose
+from ..core.retarget_list_utils import get_all_set_target_shapes
 from ..core.retarget_list_base import FaceRegionsBaseProperties
 from ..core.shape_key_utils import get_shape_key_names_from_objects, set_slider_max, set_slider_min
 from ..ctrl_rig import control_rig_utils as ctrl_utils
 from ..ctrl_rig.control_rig_animation_operators import CRIG_ACTION_SUFFIX
-from ..panels.draw_utils import draw_head_targets_layout, draw_text_block
-from .mocap_utils import get_scene_frame_rate
-from ..animate.animate_utils import get_rotation_mode
+from ..panels.draw_utils import draw_ctrl_rig_action_layout, draw_eye_action_layout, draw_head_action_layout, draw_shapes_action_layout, draw_text_block
+from .mocap_utils import SmoothBaseProperties, gaussian_filter1d, get_scene_frame_rate, median_filter, moving_average_filter
+from ..animate.animate_utils import convert_rotation_values, get_rotation_mode
 
 # Number of channels for each rotation mode
 CHANNELS_ROTATION_MODE_DICT = {
@@ -32,6 +37,12 @@ CHANNELS_ROTATION_MODE_DICT = {
 CHANNELS_FACECAP_TO_BLENDER = {
     0: 1,
     1: 2,
+    2: 1,
+}
+
+CHANNELS_EPIC_TO_BLENDER = {
+    0: 2,
+    1: 0,
     2: 1,
 }
 
@@ -56,11 +67,15 @@ class MocapBase:
     # Head Transform animation; either object or bone
     head_obj = None
     head_bone = None
-    head_bone_roll = 0
+    initial_head_rotation = None
+    initial_eye_L_rotation = None
+    initial_eye_R_rotation = None
     # The intial position of the head target
     initial_location_offset = None
     # The rotation mode in EULER, QUATERNION, AXSI_ANGLE
     head_rotation_mode = 'EULER'
+    eye_L_rotation_mode = 'EULER'
+    eye_R_rotation_mode = 'EULER'
     # The data path in rotation_euler, rotation_quaternion, rotation_axis_angle
     head_rotation_data_path = 'rotation_euler'
     # Multiply the head location (set by user)
@@ -69,12 +84,15 @@ class MocapBase:
     scene_scale_multiplier = 0.01
 
     source_rotation_units = 'DEG'  # ,'RAD'
-
     animate_head_rotation = False
     animate_head_location = False
-    aniamte_eyes = False
     dynamic_sk_ranges = True
     # For Recording
+    eye_rig = None
+    eye_L_bone = None
+    eye_R_bone = None
+    animate_eye_bones = False
+    animate_eye_shapes = False
     animation_timestamps = []
     sk_animation_lists = []
     head_rot_animation_lists = []
@@ -82,8 +100,24 @@ class MocapBase:
     eye_L_animation_lists = []
     eye_R_animation_lists = []
 
-    sk_action = None
-    head_action = None
+    # Face Smoothing
+    use_smoothing_face = False
+    smooth_window_face = 3
+    smooth_regions = {}
+    smooth_shape_names = []
+    smooth_filter_face = 'SMA'  # MEDIAN, GAUSSIAN
+    # Head Smoothing
+    use_smoothing_head = False
+    smooth_window_head = 3
+    smooth_filter_head = 'SMA'  # MEDIAN, GAUSSIAN
+    # Eye Smoothing
+    use_smoothing_eye_bones = False
+    smooth_window_eye_bones = 3
+    smooth_filter_eye_bones = 'SMA'  # MEDIAN, GAUSSIAN
+
+    sk_action: Action = None
+    head_action: Action = None
+    eye_action: Action = None
 
     def __init__(self):
         self._initialize_mocap_settings()
@@ -91,6 +125,22 @@ class MocapBase:
             self.fps = get_scene_frame_rate()
         except AttributeError:
             pass
+
+    def set_face_smoothing(self, use_smoothing, smooth_regions=None, smooth_filter='SMA', smooth_window=0):
+        self.smooth_regions = smooth_regions
+        self.use_smoothing_face = use_smoothing
+        self.smooth_window_face = smooth_window
+        self.smooth_filter_face = smooth_filter
+
+    def set_head_smoothing(self, use_smoothing, smooth_filter, smooth_window=0):
+        self.use_smoothing_head = use_smoothing
+        self.smooth_window_head = smooth_window
+        self.smooth_filter_head = smooth_filter
+
+    def set_eye_bones_smoothing(self, use_smoothing, smooth_filter, smooth_window=0):
+        self.use_smoothing_eye_bones = use_smoothing
+        self.smooth_window_eye_bones = smooth_window
+        self.smooth_filter_eye_bones = smooth_filter
 
     def set_face_regions_dict(self, active_regions_dict):
         self.active_regions_dict = active_regions_dict
@@ -112,12 +162,16 @@ class MocapBase:
     def set_head_action(self, action):
         self.head_action = action
 
+    def set_eye_action(self, action):
+        self.eye_action = action
+
     def set_source_shape_reference(self, source_shape_list):
         self.source_shape_reference = source_shape_list
 
-    def set_shape_targets(self, objects=None, retarget_shapes=None):
+    def set_shape_targets(self, objects=None, retarget_shapes=None, animate_eye_look_shapes=True, only_eye_look=False):
         if not objects or not retarget_shapes:
             self.animate_shapes = False
+            self.animate_eye_shapes = False
             return
         self.objects = objects
         self.retarget_shapes = retarget_shapes
@@ -125,11 +179,25 @@ class MocapBase:
         # Store references to the shape keys themselves.
         for shape_item in retarget_shapes:
             self.target_shapes_dict[shape_item.name] = []
-            if self.use_region_filter:
-                if hasattr(shape_item, 'region'):
-                    region = shape_item.region.lower()
+            if hasattr(shape_item, 'region'):
+                region = shape_item.region.lower()
+                if region == 'eyes':
+                    # if shape_item.name.startswith('eyeLook'):
+                    if not animate_eye_look_shapes:
+                        continue
+                elif only_eye_look:
+                    continue
+                if self.use_region_filter:
                     if self.active_regions_dict[region] is False:
                         continue
+                if self.use_smoothing_face:
+                    if self.smooth_regions[region] is True:
+                        self.smooth_shape_names.append(shape_item.name)
+                # TODO: Skip eye_look shape keys if animate_eye_transforms is False
+                # Consider to replace the bool prop animate_eye_transforms with an enum (string).
+                # if SHAPES: animate just shapes
+                # if BONES: animate just bones
+                # if BOTH: animate both
             _target_shapes = []
             if self.flip_animation:
                 if 'Left' in shape_item.name:
@@ -165,7 +233,6 @@ class MocapBase:
         head_obj: Object,
         head_bone_name="",
         head_loc_mult=1.0,
-        head_bone_roll=0,
     ) -> None:
         '''Set the head target objects. Optionally specify a bone target. Set which channels should be animated (rotation, location).'''
         self.head_obj = head_obj
@@ -176,6 +243,10 @@ class MocapBase:
             if self.head_obj.type == 'ARMATURE':
                 if head_bone_name:
                     self.head_bone = self.head_obj.pose.bones.get(head_bone_name)
+                    world_head_mat = self.head_obj.convert_space(
+                        pose_bone=self.head_bone, matrix=self.head_bone.matrix, to_space='WORLD', from_space='POSE')
+                    self.initial_head_rotation = world_head_mat.to_quaternion()
+                    # self.initial_head_rotation = (self.head_obj.matrix_world.inverted() @ self.head_bone.matrix).to_quaternion()  # self.head_bone.matrix.inverted()
                     if self.head_bone:
                         head_rot_mode = get_rotation_mode(self.head_bone)
                     else:
@@ -188,8 +259,33 @@ class MocapBase:
         self.head_rotation_data_path = "rotation_" + head_rot_mode.lower()
         self.head_location_multiplier = head_loc_mult * FACECAP_SCALE_TO_BLENDER
         self.head_rotation_mode = head_rot_mode
-        self.head_bone_roll = self.normalizeAngle(head_bone_roll)
 
+    def set_eye_targets(self, eye_rig, eye_L_bone_name, eye_R_bone_name):
+        '''Set the eye target objects. Optionally specify a bone target.'''
+        self.eye_rig = eye_rig
+        self.eye_L_bone = None
+        self.eye_R_bone = None
+        if eye_rig is not None:
+            if eye_L_bone_name:
+                self.eye_L_bone = self.eye_rig.pose.bones.get(eye_L_bone_name)
+                if self.eye_L_bone:
+                    world_mat = self.eye_rig.convert_space(
+                        pose_bone=self.eye_L_bone, matrix=self.eye_L_bone.matrix, to_space='WORLD', from_space='POSE')
+                    self.initial_eye_L_rotation = world_mat.to_quaternion()
+                    self.eye_L_rotation_mode = get_rotation_mode(self.eye_L_bone)
+                    self.eye_L_rotation_data_path = "rotation_" + self.eye_L_rotation_mode.lower()
+                else:
+                    print(f"Couldn't find the bone {eye_L_bone_name} for eye animation.")
+            if eye_R_bone_name:
+                self.eye_R_bone = self.eye_rig.pose.bones.get(eye_R_bone_name)
+                if self.eye_R_bone:
+                    world_mat = self.eye_rig.convert_space(
+                        pose_bone=self.eye_R_bone, matrix=self.eye_R_bone.matrix, to_space='WORLD', from_space='POSE')
+                    self.initial_eye_R_rotation = world_mat.to_quaternion()
+                    self.eye_R_rotation_mode = get_rotation_mode(self.eye_R_bone)
+                    self.eye_R_rotation_data_path = "rotation_" + self.eye_R_rotation_mode.lower()
+                else:
+                    print(f"Couldn't find the bone {eye_R_bone_name} for eye animation.")
 
     def _initialize_mocap_settings(self):
         # self.shape_ref = list(get_face_cap_shape_data().keys())
@@ -202,7 +298,7 @@ class MocapBase:
         '''Convert degrees to radians.'''
         return Euler(map(math.radians, e))
 
-    def _rotation_to_blender(self, value=None):
+    def _head_rotation_to_blender(self, value=None):
         '''Bring the rotation into the correct format and orientation.'''
         if len(value) < 3:
             return
@@ -212,25 +308,63 @@ class MocapBase:
             rot = self.deg_to_rad(rot)
         if self.flip_animation:
             rot = self.flip_euler_rotation(rot)
-        if not self.head_bone:
-            rot = Euler((rot.x, -rot.z, rot.y), rot.order)
-        else:
-            if round(self.head_bone_roll) != 0:
-                if radians(175) < abs(self.head_bone_roll):
-                    # pi -> invert x and z
-                    rot = Euler((-rot.x, rot.y, -rot.z), rot.order)
-                elif radians(85) < self.head_bone_roll < radians(95):
-                    # pi halbe -> swap x and z and invert z
-                    rot = Euler((rot.z, rot.y, rot.x), rot.order)
-                elif radians(-85) > self.head_bone_roll > radians(-95):
-                    # minus pi halbe -> swap x and z and invert both
-                    rot = Euler((-rot.z, rot.y, -rot.x), rot.order)
-        if self.head_rotation_mode != 'EULER':
-            rot = rot.to_quaternion()
-            if self.head_rotation_mode == 'AXIS_ANGLE':
-                vec, angle = rot.to_axis_angle()
-                rot = [angle]
-                rot.extend([i for i in vec])
+        # convert Blender coordinates
+        rot = Quaternion((rot.x, -rot.z, rot.y))
+        if self.head_bone:
+            # for some reason I need to conjugate the quaternion to get the correct rotation on bones
+            rot = rot.conjugated()
+            # Rotational difference between the incoming and the initial head rotation
+            rot = rot.rotation_difference(self.initial_head_rotation)
+            rot = self.initial_head_rotation.inverted() @ rot
+        # if self.head_rotation_mode == 'EULER':
+        #     rot = rot.to_euler()
+        rot = convert_rotation_values(
+            rot,
+            rot_mode_from='QUATERNION',
+            rot_mode_to=self.head_rotation_mode
+        )
+        return rot
+
+    def _eye_L_rotation_to_blender(self, value: list = None):
+        if len(value) < 2:
+            return
+        rot = Euler(value, 'XYZ')
+        # to Blender world coordinates (swap y and z and invert y)
+        if self.source_rotation_units == 'DEG':
+            rot = self.deg_to_rad(rot)
+        if self.flip_animation:
+            rot = self.flip_euler_rotation(rot)
+        # convert Face Cap to Blender coordinates
+        rot = Quaternion((rot.x, -rot.z, rot.y))
+        if self.eye_L_bone:
+            # for some reason I need to conjugate the quaternion to get the correct rotation
+            rot = rot.conjugated()
+            # Rotational difference between the incoming and the initial head rotation
+            rot = rot.rotation_difference(self.initial_eye_L_rotation)
+            rot = self.initial_eye_L_rotation.inverted() @ rot
+        if self.eye_L_rotation_mode == 'EULER':
+            rot = rot.to_euler()
+        return rot
+
+    def _eye_R_rotation_to_blender(self, value: list = None):
+        if len(value) < 2:
+            return
+        rot = Euler(value, 'XYZ')
+        # to Blender world coordinates (swap y and z and invert y)
+        if self.source_rotation_units == 'DEG':
+            rot = self.deg_to_rad(rot)
+        if self.flip_animation:
+            rot = self.flip_euler_rotation(rot)
+        # convert Face Cap to Blender coordinates
+        rot = Quaternion((rot.x, -rot.z, rot.y))
+        if self.eye_R_bone:
+            # for some reason I need to conjugate the quaternion to get the correct rotation
+            rot = rot.conjugated()
+            # Rotational difference between the incoming and the initial head rotation
+            rot = rot.rotation_difference(self.initial_eye_R_rotation)
+            rot = self.initial_eye_R_rotation.inverted() @ rot
+        if self.eye_R_rotation_mode == 'EULER':
+            rot = rot.to_euler()
         return rot
 
     def _location_to_blender(self, value=None):
@@ -277,21 +411,25 @@ class MocapBase:
         self.head_obj = None
         self.head_bone = None
         self.head_action = None
+        self.eye_action = None
 
     def clear_animation_data(self):
         self.animation_timestamps = []
         self.sk_animation_lists = []
         self.head_rot_animation_lists = []
         self.head_loc_animation_lists = []
-
-    # def set_shape_key_ranges_from_animation(self, anim_data):
+        self.eye_L_animation_lists = []
+        self.eye_R_animation_lists = []
 
     def recording_to_keyframes(self) -> bool:
         sk_animation_lists = self.sk_animation_lists
+        # Test smoothing
         head_rot_animation_lists = self.head_rot_animation_lists
         head_loc_animation_lists = self.head_loc_animation_lists
+        eye_L_animation_lists = self.eye_L_animation_lists
+        eye_R_animation_lists = self.eye_R_animation_lists
         keyframes_added = False
-        if self.animate_shapes:
+        if self.animate_shapes or self.animate_eye_shapes:
             if not self.sk_action:
                 print("Couldn't find a valid shape key action.")
             if sk_animation_lists:
@@ -306,6 +444,21 @@ class MocapBase:
                     except IndexError:
                         print(f'failed at index {i}')
                         continue
+                    if name.startswith('eyeLook') and self.use_smoothing_eye_bones:
+                        if self.smooth_filter_eye_bones == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_eye_bones)
+                        elif self.smooth_filter_eye_bones == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_eye_bones)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_eye_bones, 2)
+                    # smooth values
+                    elif self.use_smoothing_face and name in self.smooth_shape_names:
+                        if self.smooth_filter_face == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_face)
+                        elif self.smooth_filter_face == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_face)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_face, 2)
                     amplify = self.retarget_shapes[name].amplify
                     anim_values *= amplify
                     shape_dps = set()
@@ -324,7 +477,7 @@ class MocapBase:
                         keyframes_added = True
 
         # Head Transform Animation
-        if self.animate_head_location or self.animate_head_rotation:
+        if self.head_obj and (self.animate_head_location or self.animate_head_rotation):
             head_dp_base = ""
             loc_dp = "location"
             rot_channel_count = CHANNELS_ROTATION_MODE_DICT.get(self.head_rotation_mode, 3)
@@ -336,7 +489,7 @@ class MocapBase:
             # Head Rotation
             if self.animate_head_rotation and head_rot_animation_lists:
                 # print(head_rot_animation_lists)
-                head_rot_animation_lists = list(map(self._rotation_to_blender, head_rot_animation_lists))
+                head_rot_animation_lists = list(map(self._head_rotation_to_blender, head_rot_animation_lists))
                 head_rot_animation_lists = np.array(head_rot_animation_lists)
                 for i in range(rot_channel_count):
                     try:
@@ -344,6 +497,13 @@ class MocapBase:
                     except IndexError:
                         print('Index Error when getting anim values from head rot:')
                         continue
+                    if self.use_smoothing_head:
+                        if self.smooth_filter_head == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_head)
+                        elif self.smooth_filter_head == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_head)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_head, 2)
                     fc = self.head_action.fcurves.find(head_dp_base + self.head_rotation_data_path, index=i)
                     if not fc:
                         fc = self.head_action.fcurves.new(head_dp_base + self.head_rotation_data_path, index=i)
@@ -360,10 +520,69 @@ class MocapBase:
                     except IndexError:
                         print('Index Error when getting anim values from head loc:')
                         continue
+                    if self.use_smoothing_head:
+                        if self.smooth_filter_head == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_head)
+                        elif self.smooth_filter_head == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_head)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_head, 2)
                     # blender_index = self.CHANNELS_FACECAP_TO_BLENDER_[i]
                     fc = self.head_action.fcurves.find(head_dp_base + loc_dp, index=i)
                     if not fc:
                         fc = self.head_action.fcurves.new(head_dp_base + loc_dp, index=i)
+                    self._anim_values_to_keyframes(fc, self.animation_timestamps, anim_values)
+                    keyframes_added = True
+            # Eye Rotation
+        if self.animate_eye_bones:
+            if self.eye_L_bone:
+                self.eye_rig.animation_data.action = self.eye_action
+                rot_channel_count_L = CHANNELS_ROTATION_MODE_DICT.get(self.eye_L_rotation_mode, 3)
+                eye_L_dp = f'pose.bones["{self.eye_L_bone.name}"].{self.eye_L_rotation_data_path}'
+                eye_L_animation_lists = list(map(self._eye_L_rotation_to_blender, eye_L_animation_lists))
+                eye_L_animation_lists = np.array(eye_L_animation_lists)
+                # Left Eye Rotation
+                for i in range(rot_channel_count_L):
+                    try:
+                        anim_values = eye_L_animation_lists[:, i]
+                    except IndexError:
+                        print('Index Error when getting anim values from eye rot:')
+                        continue
+                    if self.use_smoothing_eye_bones:
+                        if self.smooth_filter_eye_bones == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_eye_bones)
+                        elif self.smooth_filter_eye_bones == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_eye_bones)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_eye_bones, 2)
+                    fc = self.eye_action.fcurves.find(eye_L_dp, index=i)
+                    if not fc:
+                        fc = self.eye_action.fcurves.new(eye_L_dp, index=i, action_group=self.eye_L_bone.name)
+                    self._anim_values_to_keyframes(fc, self.animation_timestamps, anim_values)
+                    keyframes_added = True
+            # Right Eye Rotation
+            if self.eye_R_bone:
+                self.eye_rig.animation_data.action = self.eye_action
+                rot_channel_count_R = CHANNELS_ROTATION_MODE_DICT.get(self.eye_R_rotation_mode, 3)
+                eye_R_dp = f'pose.bones["{self.eye_R_bone.name}"].{self.eye_R_rotation_data_path}'
+                eye_R_animation_lists = list(map(self._eye_R_rotation_to_blender, eye_R_animation_lists))
+                eye_R_animation_lists = np.array(eye_R_animation_lists)
+                for i in range(rot_channel_count_R):
+                    try:
+                        anim_values = eye_R_animation_lists[:, i]
+                    except IndexError:
+                        print('Index Error when getting anim values from eye rot:')
+                        continue
+                    if self.use_smoothing_eye_bones:
+                        if self.smooth_filter_eye_bones == 'SMA':
+                            anim_values = moving_average_filter(anim_values, self.smooth_window_eye_bones)
+                        elif self.smooth_filter_eye_bones == 'MEDIAN':
+                            anim_values = median_filter(anim_values, kernel_size=self.smooth_window_eye_bones)
+                        else:
+                            anim_values = gaussian_filter1d(anim_values, self.smooth_window_eye_bones, 2)
+                    fc = self.eye_action.fcurves.find(eye_R_dp, index=i)
+                    if not fc:
+                        fc = self.eye_action.fcurves.new(eye_R_dp, index=i, action_group=self.eye_R_bone.name)
                     self._anim_values_to_keyframes(fc, self.animation_timestamps, anim_values)
                     keyframes_added = True
         return keyframes_added
@@ -379,7 +598,11 @@ def update_bake_ctrl_rig(self, context):
         crig.animation_data_create()
 
 
-class MocapImporterBase(FaceRegionsBaseProperties):
+def update_frame_rate(self, context):
+    self.record_frame_rate = int(self.frame_rate_presets)
+
+
+class MocapImporterBase(FaceRegionsBaseProperties, SmoothBaseProperties):
     '''Base class for importing raw mocap data from text or csv files'''
     bl_label = "Import"
     bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
@@ -457,28 +680,66 @@ class MocapImporterBase(FaceRegionsBaseProperties):
         default=True,
         description="Whether the recorded expressions should be animated."
     )
-    flip_animation: BoolProperty(
-        name="Mirror X",
-        default=False,
-        description="Whether the animation should be flipped.",
+    animate_eye_rotation_shapes: BoolProperty(
+        name="Shapes",
+        description="When this option is enabled, the shape keys for eye rotation are animated/recorded",
+        default=True
+    )
+    animate_eye_rotation_bones: BoolProperty(
+        name="Bones",
+        description="When this option is enabled the rotation of the eyes (eye bones) is animated/recorded.",
+        default=True
+    )
+    attempt_to_skip_shape_keys_on_eye_objects: BoolProperty(
+        name='Attempt to Skip Shape Keys on Eye Objects',
+        default=True,
+        description='If the eye objects have shape keys, try to skip them when importing eye rotation to transforms. This avoids double deformation.'
+    )
+    can_bake_control_rig: BoolProperty(
+        name="Can Bake Control Rig",
+        default=True,
+    )
+    record_frame_rate: FloatProperty(
+        name="Record Frame Rate",
+        description="The frame rate used to record the animation data.",
+        default=60.0,
+        min=1,
+        max=1000,
+        soft_min=10,
+        soft_max=200,
+        options={'SKIP_SAVE'}
+    )
+    # record_frame_rate = 1 / 60
+    frame_rate_presets: EnumProperty(
+        name='Frame Rate',
+        description='Set according to frame rate settings in Live Link Face app.',
+        items=(
+            ('24', '24', '24'),
+            ('25', '25', '25'),
+            ('30', '30', '30'),
+            ('60', '60', '60'),
+        ),
+        default='60',
+        update=update_frame_rate,
     )
 
-    can_load_audio = False
-    engine_settings_prop_name = "faceit_face_cap_mocap_settings"
-    target_shapes_prop_name = "faceit_arkit_retarget_shapes"
-    engine_settings = None
-    record_frame_rate = 1000
-    filename = ""
-    can_bake_control_rig = True
-    can_import_head_location = True
-    can_import_head_rotation = True
+    def __init__(self):
+        self.engine_name = "FACECAP"
+        self.can_load_audio = False
+        self.target_shapes_prop_name = "faceit_arkit_retarget_shapes"
+        self.engine_settings = None
+        self.filename = ""
+        # self.can_bake_control_rig = True
+        self.can_import_head_location = True
+        self.can_import_head_rotation = True
+        self.can_import_eye_transforms = True
 
     @classmethod
     def poll(cls, context):
         return True
 
     def _get_engine_specific_settings(self, context):
-        self.engine_settings = getattr(context.scene, self.engine_settings_prop_name)
+        self.engine_settings = context.scene.faceit_live_mocap_settings.get(self.engine_name)
 
     def _get_mocap_importer(self) -> MocapBase:
         return MocapBase()
@@ -491,6 +752,9 @@ class MocapImporterBase(FaceRegionsBaseProperties):
 
     def invoke(self, context, event):
         self._get_engine_specific_settings(context)
+        self.can_import_head_location = self.engine_settings.can_animate_head_location
+        self.can_import_head_rotation = self.engine_settings.can_animate_head_rotation
+        self.can_import_eye_transforms = self.engine_settings.can_animate_eye_rotation
         raw_animation_data = self._get_raw_animation_data()
         if not raw_animation_data:
             self.report({'WARNING'}, "No recorded data found.")
@@ -499,6 +763,43 @@ class MocapImporterBase(FaceRegionsBaseProperties):
             self.report({'ERROR'}, 'Mocap File not set or invalid')
             return {'CANCELLED'}
         self.filename = self._get_clean_filename(self.engine_settings.filename)
+        if self.engine_name == 'A2F':
+            if getattr(self, "a2f_solver", None):
+                with open(self.engine_settings.filename, 'r') as f:
+                    data = json.load(f)
+                    if "exportFps" in data:
+                        self.record_frame_rate = data.get("exportFps")
+                        numPoses = data["numPoses"]
+                        if numPoses == 52:
+                            setattr(self, "a2f_solver", 'ARKIT')
+                            setattr(self, "found_solver", 'ARKIT')
+                        elif numPoses == 46:
+                            setattr(self, "a2f_solver", 'A2F')
+                            setattr(self, "found_solver", 'A2F')
+                        else:
+                            self.report(
+                                {'ERROR'},
+                                "It looks like you used a blendshape solver that is unknown in Faceit. Please reach out through discord or blendermarket for support.")
+                            return {'CANCELLED'}
+                if self.a2f_solver == 'ARKIT':
+                    self.can_bake_control_rig = True
+        elif self.engine_name == 'EPIC':
+            # Read the frame rate from the file:
+            with open(self.engine_settings.filename) as csvfile:
+                reader = csv.reader(csvfile)
+                timecodes = []
+                for i, row in enumerate(reader):
+                    if i == 0:
+                        continue
+                    elif i > 200:
+                        break
+                    timecodes.append(row[0])
+                    # Extract the frame values
+                frames = []
+                for tc in timecodes:
+                    frames.append(int(tc.split(':')[-1].split('.')[0]))
+                self.record_frame_rate = max(frames) + 1
+
         ctrl_rig = context.scene.faceit_control_armature
         if ctrl_rig and self.can_bake_control_rig:
             if ctrl_utils.is_control_rig_connected(ctrl_rig):
@@ -518,36 +819,160 @@ class MocapImporterBase(FaceRegionsBaseProperties):
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
+        if self.engine_name in ('EPIC', 'A2F') and self._get_mocap_importer().__class__.__name__ != 'LiveAnimator':
+            row = col.row(align=True)
+            row.prop(self, "record_frame_rate")
+            row.prop_menu_enum(self, "frame_rate_presets", text="", icon='DOWNARROW_HLT')
         row = col.row(align=True)
         row.label(text="Shapes Animation")
         row = col.row(align=True)
         row.prop(self, "animate_shapes", icon='BLANK1')
         if self.animate_shapes:
-            self._draw_control_rig_ui(col)
-            self._draw_region_filter_ui(col)
+            if self.can_bake_control_rig:
+                self._draw_control_rig_ui(col)
+            if self.use_region_filter:
+                icon = 'TRIA_DOWN'
+            else:
+                icon = 'TRIA_RIGHT'
+            row = col.row(align=True)
+            row.prop(self, 'use_region_filter', icon=icon)
+            if self.use_region_filter:
+                self._draw_region_filter_ui(self, col)
+            # col.separator()
+            row = col.row(align=True)
+            row.prop(self, 'use_smooth_face_filter', text='Smooth Face', icon='MOD_SMOOTH')
+            if self.use_smooth_face_filter:
+                col.use_property_split = True
+                col.separator()
+                # row = col.row()
+                # row.prop(self, 'smoothing_filter_face')
+                row = col.row()
+                row.prop(self, 'smooth_window_face')
+                # self._draw_region_filter_ui(self.smooth_regions, col)
+                col.separator()
+                if self.brows or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.brows else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'brows', icon=icon_value)
+                # if self.eyes or not self.use_region_filter:
+                #     row = col.row(align=True)
+                #     icon_value = 'CHECKBOX_HLT' if self.smooth_regions.eyes else 'CHECKBOX_DEHLT'
+                #     row.prop(self.smooth_regions, 'eyes', icon=icon_value)
+                if self.eyelids or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.eyes else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'eyelids', icon=icon_value)
+                if self.cheeks or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.cheeks else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'cheeks', icon=icon_value)
+                if self.nose or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.nose else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'nose', icon=icon_value)
+                if self.mouth or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.mouth else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'mouth', icon=icon_value)
+                if self.tongue or not self.use_region_filter:
+                    row = col.row(align=True)
+                    icon_value = 'CHECKBOX_HLT' if self.smooth_regions.tongue else 'CHECKBOX_DEHLT'
+                    row.prop(self.smooth_regions, 'tongue', icon=icon_value)
+                col.use_property_split = False
+                col.separator()
+            row = col.row(align=True)
+            sub = row.split(align=True)
+            sub.alignment = 'RIGHT'
+            if self.bake_to_control_rig:
+                sub.label(text="See Control Tab for Target Shapes Selection")
+            else:
+                sub.label(text="See Shapes Tab for Target Shapes Selection")
+        if self.can_import_head_location or self.can_import_head_rotation:
+            self._draw_head_motion_types(col)
+            if self.animate_head_location or self.animate_head_rotation:
+                row = col.row(align=True)
+                row.prop(self, 'smooth_head', icon='MOD_SMOOTH')
+                if self.smooth_head:
+                    col.separator()
+                    col.use_property_split = True
+                    # row = col.row()
+                    # row.prop(self, 'smoothing_filter_head')
+                    row = col.row()
+                    row.prop(self, 'smooth_window_head')
+                col.use_property_split = False
+                row = col.row(align=True)
+                sub = row.split(align=True)
+                sub.alignment = 'RIGHT'
+                sub.label(text="See Head Setup for Target Selection")
 
-        self._draw_head_motion_types(col)
-        if self.animate_head_location or self.animate_head_rotation:
-            draw_head_targets_layout(col, show_head_action=False)
-
+        if self.can_import_eye_transforms:
+            self._draw_eye_motion_types(col)
+            if self.animate_eye_rotation_shapes or self.animate_eye_rotation_bones:
+                row = col.row(align=True)
+                row.prop(self, 'smooth_eye_look_animation', icon='MOD_SMOOTH')
+                if self.smooth_eye_look_animation:
+                    col.separator()
+                    col.use_property_split = True
+                    # row = col.row()
+                    # row.prop(self, 'smoothing_filter_eye_bones')
+                    row = col.row()
+                    row.prop(self, 'smooth_window_eye_bones')
+                    col.use_property_split = False
+                row = col.row(align=True)
+                sub = row.split(align=True)
+                sub.alignment = 'RIGHT'
+                sub.label(text="See Eye Setup for Eye Target Selection")
         if self.animate_shapes or self.animate_head_location or self.animate_head_rotation:
             self._draw_load_to_action_ui(col, context)
+            col.use_property_split = True
             row = col.row(align=True)
-            row.prop(self, "flip_animation", icon='MOD_MIRROR')
+            row.prop(self.engine_settings, "mirror_x", icon='MOD_MIRROR')
+            col.use_property_split = False
         else:
-            if not (self.animate_head_location or self.animate_head_rotation):
-                draw_text_block(
-                    layout=layout,
-                    text='Enable at least one type of motion.',
-                    heading='WARNING'
-                )
+            # if not (self.animate_head_location or self.animate_head_rotation):
+            draw_text_block(
+                context,
+                layout=layout,
+                text='Enable at least one type of motion.',
+                heading='WARNING',
+                in_operator=True,
+            )
         self._draw_load_audio_ui(col)
+
+    def _draw_load_to_action_ui(self, layout, context):
+        scene = context.scene
+        prop_split = layout.use_property_split
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        row = layout.row()
+        row.label(text='Action Settings')
+        if self.bake_to_control_rig:
+            ctrl_rig = scene.faceit_control_armature
+            if ctrl_rig:
+                draw_ctrl_rig_action_layout(layout, ctrl_rig)
+        elif self.animate_shapes:
+            draw_shapes_action_layout(layout, context)
+        head_obj = scene.faceit_head_target_object
+        if self.animate_head_location or self.animate_head_rotation:
+            if head_obj:
+                draw_head_action_layout(layout, head_obj)
+        if self.animate_eye_rotation_bones:
+            eye_rig = scene.faceit_eye_target_rig
+            if eye_rig and eye_rig is not head_obj:
+                draw_eye_action_layout(layout, eye_rig)
+        layout.separator()
+        row = layout.row()
+        row.prop(self, 'overwrite_method', expand=True)
+        row = layout.row()
+        row.prop(self, 'frame_start', icon='CON_TRANSFORM')
+
+        layout.use_property_split = prop_split
 
     def _draw_control_rig_ui(self, layout):
         row = layout.row()
-        if self.can_bake_control_rig:
-            if futils.get_faceit_control_armature():
-                row.prop(self, 'bake_to_control_rig', icon='CON_ARMATURE')
+        if futils.get_faceit_control_armature():
+            row.prop(self, 'bake_to_control_rig', icon='CON_ARMATURE')
 
     def _draw_head_motion_types(self, layout):
         '''Draw the motion types for this operator.'''
@@ -561,38 +986,17 @@ class MocapImporterBase(FaceRegionsBaseProperties):
         sub_row.prop(self, "animate_head_location", icon='BLANK1')
         sub_row.enabled = self.can_import_head_location
 
-    def _draw_load_to_action_ui(self, layout, context):
-        scene = context.scene
-        prop_split = layout.use_property_split
-        layout.use_property_split = True
-        row = layout.row()
-        row.label(text='Action Settings')
-        if self.bake_to_control_rig:
-            ctrl_rig = scene.faceit_control_armature
-            row = layout.row(align=True)
-            if ctrl_rig.animation_data:
-                row.prop_search(ctrl_rig.animation_data,
-                                'action', bpy.data, 'actions', text="Ctrl Rig Action")
-            op = row.operator('faceit.new_ctrl_rig_action', icon='ADD', text="")
-            op.action_name = self.new_action_name + CRIG_ACTION_SUFFIX
-        elif self.animate_shapes:
-            row = layout.row(align=True)
-            row.prop(scene, "faceit_mocap_action", icon='ACTION')
-            op = row.operator('faceit.new_action', icon='ADD', text="")
-            op.action_name = self.new_action_name
-        if self.animate_head_location or self.animate_head_rotation:
-            head_obj = scene.faceit_head_target_object
-            if head_obj:
-                row = layout.row(align=True)
-                row.prop(scene, "faceit_head_action", icon='ACTION')
-                op = row.operator('faceit.new_head_action', icon='ADD', text="")
-        layout.separator()
-        row = layout.row()
-        row.prop(self, 'overwrite_method', expand=True)
-        row = layout.row()
-        row.prop(self, 'frame_start', icon='CON_TRANSFORM')
-
-        layout.use_property_split = prop_split
+    def _draw_eye_motion_types(self, layout):
+        '''Draw the motion types for this operator.'''
+        row = layout.row(align=True)
+        row.label(text="Eye Rotation")
+        row = layout.row(align=True)
+        sub_row = row.row(align=True)
+        sub_row.prop(self, "animate_eye_rotation_shapes", icon='BLANK1')
+        # sub_row.enabled = self.can_import_head_rotation
+        sub_row = row.row(align=True)
+        sub_row.prop(self, "animate_eye_rotation_bones", icon='BLANK1')
+        # sub_row.enabled = self.can_animate_eye_rotation
 
     def _draw_load_audio_ui(self, layout):
         if self.can_load_audio:
@@ -607,30 +1011,26 @@ class MocapImporterBase(FaceRegionsBaseProperties):
                 row.prop(self, 'remove_audio_tracks_with_same_name', icon='TRASH')
             layout.separator()
 
-    def _draw_region_filter_ui(self, layout):
+    def _draw_region_filter_ui(self, regions_class, layout):
+        layout = layout.column(align=True)
         row = layout.row(align=True)
-        if self.use_region_filter:
-            icon = 'TRIA_DOWN'
-        else:
-            icon = 'TRIA_RIGHT'
-        row.prop(self, "use_region_filter", icon=icon)
-        if self.use_region_filter:
-            layout = layout.column(align=True)
-            row = layout.row(align=True)
-            icon_value = 'CHECKBOX_HLT' if self.brows else 'CHECKBOX_DEHLT'
-            row.prop(self, 'brows', icon=icon_value)
-            icon_value = 'CHECKBOX_HLT' if self.eyes else 'CHECKBOX_DEHLT'
-            row.prop(self, 'eyes', icon=icon_value)
-            row = layout.row(align=True)
-            icon_value = 'CHECKBOX_HLT' if self.cheeks else 'CHECKBOX_DEHLT'
-            row.prop(self, 'cheeks', icon=icon_value)
-            icon_value = 'CHECKBOX_HLT' if self.nose else 'CHECKBOX_DEHLT'
-            row.prop(self, 'nose', icon=icon_value)
-            row = layout.row(align=True)
-            icon_value = 'CHECKBOX_HLT' if self.mouth else 'CHECKBOX_DEHLT'
-            row.prop(self, 'mouth', icon=icon_value)
-            icon_value = 'CHECKBOX_HLT' if self.tongue else 'CHECKBOX_DEHLT'
-            row.prop(self, 'tongue', icon=icon_value)
+        icon_value = 'CHECKBOX_HLT' if regions_class.brows else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'brows', icon=icon_value)
+        # row = layout.row(align=True)
+        # icon_value = 'CHECKBOX_HLT' if regions_class.eyes else 'CHECKBOX_DEHLT'
+        # row.prop(regions_class, 'eyes', icon=icon_value)
+        icon_value = 'CHECKBOX_HLT' if regions_class.eyelids else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'eyelids', icon=icon_value)
+        row = layout.row(align=True)
+        icon_value = 'CHECKBOX_HLT' if regions_class.cheeks else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'cheeks', icon=icon_value)
+        icon_value = 'CHECKBOX_HLT' if regions_class.nose else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'nose', icon=icon_value)
+        row = layout.row(align=True)
+        icon_value = 'CHECKBOX_HLT' if regions_class.mouth else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'mouth', icon=icon_value)
+        icon_value = 'CHECKBOX_HLT' if regions_class.tongue else 'CHECKBOX_DEHLT'
+        row.prop(regions_class, 'tongue', icon=icon_value)
 
     def _check_file_path(self, filename):
         '''Returns True when filename is valid'''
@@ -702,7 +1102,7 @@ class MocapImporterBase(FaceRegionsBaseProperties):
         animate_loc = self.animate_head_location
         animate_rot = self.animate_head_rotation
         animate_shapes = self.animate_shapes
-        if not (animate_shapes or animate_loc or animate_rot):
+        if not (animate_shapes or animate_loc or animate_rot or self.animate_eye_rotation_shapes or self.animate_eye_rotation_bones):
             self.report({'ERROR'}, "You need to enable at least one type of motion!")
             return {'CANCELLED'}
         raw_animation_data = self._get_raw_animation_data()
@@ -719,10 +1119,35 @@ class MocapImporterBase(FaceRegionsBaseProperties):
         mocap_importer.animate_head_location = animate_loc
         mocap_importer.animate_head_rotation = animate_rot
         mocap_importer.animate_shapes = animate_shapes
-        mocap_importer.flip_animation = self.flip_animation
+        mocap_importer.animate_eye_shapes = self.animate_eye_rotation_shapes
+        mocap_importer.animate_eye_bones = self.animate_eye_rotation_bones
+        mocap_importer.flip_animation = self.engine_settings.mirror_x
+        mocap_importer.set_face_smoothing(
+            use_smoothing=self.use_smooth_face_filter,
+            smooth_regions=self.smooth_regions.get_active_regions(),
+            smooth_filter=self.smoothing_filter_face,
+            smooth_window=self.smooth_window_face
+        )
+        mocap_importer.set_head_smoothing(
+            self.smooth_head,
+            self.smoothing_filter_head,
+            self.smooth_window_head
+        )
+        mocap_importer.set_eye_bones_smoothing(
+            self.smooth_eye_look_animation,
+            self.smoothing_filter_eye_bones,
+            self.smooth_window_eye_bones
+        )
         scene = context.scene
         start_frame_mocap = self.frame_start
-        if animate_shapes:
+        if animate_shapes or self.animate_eye_rotation_shapes:
+            if getattr(self, "a2f_solver", None):
+                if self.a2f_solver == 'A2F':
+                    self.target_shapes_prop_name = "faceit_a2f_retarget_shapes"
+                    mocap_importer.set_source_shape_reference(list(get_a2f_shape_data().keys()))
+                else:
+                    self.target_shapes_prop_name = "faceit_arkit_retarget_shapes"
+                    mocap_importer.set_source_shape_reference(list(get_arkit_shape_data().keys()))
             if self.bake_to_control_rig:
                 c_rig = futils.get_faceit_control_armature()
                 if not c_rig:
@@ -753,65 +1178,126 @@ class MocapImporterBase(FaceRegionsBaseProperties):
                     {'WARNING'},
                     'No registered objects found. {}'.format(
                         'Please update the control rig'
-                        if self.bake_to_control_rig else 'Please register objects in Setup panel in order to animate shape keys.'))
+                        if self.bake_to_control_rig else
+                        'Please register objects in Setup panel in order to animate shape keys.'))
                 futils.restore_scene_state(context, state_dict)
                 return {'CANCELLED'}
-
-            if not target_shapes:  # or not rutils.get_all_set_target_shapes(retarget_list):
-                self.report({'WARNING'}, 'Target Shapes are not properly configured. {}'.format(
-                    'Please update the control rig' if self.bake_to_control_rig else 'Set up target shapes in Shapes panel.'))
-                futils.restore_scene_state(context, state_dict)
-                return {'CANCELLED'}
-
-            if not get_shape_key_names_from_objects(objects=target_objects):
+            available_shape_keys = set(get_shape_key_names_from_objects(objects=target_objects))
+            if not available_shape_keys:
                 self.report(
                     {'WARNING'},
                     'The registered objects hold no Shape Keys. Please create Shape Keys before loading mocap data.')
                 futils.restore_scene_state(context, state_dict)
                 return {'CANCELLED'}
-
-            # Shape Settings
-            mocap_importer.use_region_filter = self.use_region_filter
-            mocap_importer.active_regions_dict = self.get_active_regions()
-            mocap_importer.set_shape_targets(
-                objects=target_objects,
-                retarget_shapes=target_shapes
-            )
-            mocap_importer.set_sk_action(mocap_action)
-
+            all_set_target_shapes = set(get_all_set_target_shapes(target_shapes))
+            if all_set_target_shapes.intersection(available_shape_keys):
+                # futils.restore_scene_state(context, state_dict)
+                # return {'CANCELLED'}
+                # TODO: Strip objects from target objects that are assigned to eye deform groups in case the eye rotation target is set to transforms.
+                # Otherwise a double transformation will be applied.
+                # Get the objects that are assigned to faceit_left_eyes_other and faceit_right_eyes_other
+                # left_eye_objects = get_objects_with_vertex_group(vgroup_name='faceit_left_eyes_other', objects=target_objects, get_all=True)
+                # if left_eye_objects:
+                #     target_objects = [obj for obj in target_objects if obj not in left_eye_objects]
+                # right_eye_objects = get_objects_with_vertex_group(vgroup_name='faceit_right_eyes_other', objects=target_objects, get_all=True)
+                # if right_eye_objects:
+                #     target_objects = [obj for obj in target_objects if obj not in right_eye_objects]
+                # Shape Settings
+                mocap_importer.use_region_filter = self.use_region_filter
+                mocap_importer.active_regions_dict = self.get_active_regions()
+                mocap_importer.set_shape_targets(
+                    objects=target_objects,
+                    retarget_shapes=target_shapes,
+                    animate_eye_look_shapes=self.animate_eye_rotation_shapes,
+                    only_eye_look=not animate_shapes,
+                )
+                mocap_importer.set_sk_action(mocap_action)
+            else:
+                self.report({'WARNING'}, 'Target Shapes are not properly configured. {}'.format(
+                    'Please update the control rig' if self.bake_to_control_rig else 'Set up target shapes in Shapes panel.'))
+        head_obj = None
+        head_action = None
         if animate_loc or animate_rot:
             # Head Settings
             head_obj = context.scene.faceit_head_target_object
-            head_loc_multiplier = context.scene.faceit_osc_head_location_multiplier
+            head_loc_multiplier = self.engine_settings.head_location_multiplier
             head_bone_name = context.scene.faceit_head_sub_target
-            head_bone_roll = 0
+            saved_pose = None
             if head_obj:
                 if head_obj.type == 'ARMATURE':
                     futils.set_active_object(head_obj.name)
                     futils.set_hide_obj(head_obj, False)
-                    pb = head_obj.pose.bones.get(head_bone_name)
-                    head_bone_roll = get_edit_bone_roll(pb)
-                    # bpy.ops.object.mode_set(mode='EDIT')
-                    # edit_bone = head_obj.data.edit_bones.get(head_bone_name)
-                    # if edit_bone:
-                    #     head_bone_roll = round(edit_bone.roll % (2 * PI), 3)
-                    #     # head_bone_roll = round(edit_bone.roll, 3)
-                    # bpy.ops.object.mode_set()
-            mocap_importer.set_head_targets(
-                head_obj=head_obj,
-                head_bone_name=head_bone_name,
-                head_loc_mult=head_loc_multiplier,
-                head_bone_roll=head_bone_roll
-            )
-            if head_obj:
-                if scene.faceit_head_action is None or self.overwrite_method == 'REPLACE':
+                    # It's important to reset the pose before setting the head targets to get accurate rotation data.
+                    # Save the pose to restore it later
+                    saved_pose = save_pose(head_obj)
+                    # reset_pose(head_obj)
+                    head_bone = head_obj.pose.bones.get(head_bone_name)
+                    if head_bone:
+                        reset_pb(head_bone)
+                    dg = context.evaluated_depsgraph_get()
+                    dg.update()
+                mocap_importer.set_head_targets(
+                    head_obj=head_obj,
+                    head_bone_name=head_bone_name,
+                    head_loc_mult=head_loc_multiplier,
+                )
+                if head_obj.animation_data:
+                    head_action = head_obj.animation_data.action
+                if head_action is None or self.overwrite_method == 'REPLACE':
                     bpy.ops.faceit.new_head_action(
                         'EXEC_DEFAULT',
                         overwrite_action=self.overwrite_method == 'REPLACE',
                         use_fake_user=True,
                     )
-                mocap_importer.set_head_action(scene.faceit_head_action)
-
+                    head_action = head_obj.animation_data.action
+                mocap_importer.set_head_action(head_action)
+            if saved_pose:
+                restore_saved_pose(head_obj, saved_pose)
+        if self.animate_eye_rotation_bones:
+            saved_pose = None
+            eye_rig = context.scene.faceit_eye_target_rig
+            if eye_rig is not None:
+                eye_L_bone_name = context.scene.faceit_eye_L_sub_target
+                eye_R_bone_name = context.scene.faceit_eye_R_sub_target
+                futils.set_hide_obj(eye_rig, False)
+                saved_pose = save_pose(eye_rig)
+                eye_L_bone = eye_rig.pose.bones.get(eye_L_bone_name)
+                if eye_L_bone:
+                    reset_pb(eye_L_bone)
+                else:
+                    eye_L_bone_name = None
+                eye_R_bone = eye_rig.pose.bones.get(eye_R_bone_name)
+                if eye_R_bone:
+                    reset_pb(eye_R_bone)
+                else:
+                    eye_R_bone_name = None
+                dg = context.evaluated_depsgraph_get()
+                dg.update()
+                if eye_R_bone or eye_L_bone:
+                    mocap_importer.set_eye_targets(
+                        eye_rig=eye_rig,
+                        eye_L_bone_name=eye_L_bone_name,
+                        eye_R_bone_name=eye_R_bone_name,
+                    )
+                    # Set the bone action
+                    eye_action = None
+                    if eye_rig is not head_obj or head_action is None:
+                        if eye_rig.animation_data:
+                            eye_action = eye_rig.animation_data.action
+                        if (eye_action is None or self.overwrite_method == 'REPLACE'):
+                            bpy.ops.faceit.new_eye_action(
+                                'EXEC_DEFAULT',
+                                overwrite_action=self.overwrite_method == 'REPLACE',
+                                use_fake_user=True,
+                            )
+                            eye_action = eye_rig.animation_data.action
+                        mocap_importer.set_eye_action(eye_action)
+                    else:
+                        mocap_importer.set_eye_action(head_action)
+                else:
+                    mocap_importer.animate_eye_bones = False
+            if saved_pose:
+                restore_saved_pose(eye_rig, saved_pose)
         # Process & Import Animation
         mocap_importer.fps = get_scene_frame_rate()
         mocap_importer.parse_animation_data(
@@ -824,7 +1310,14 @@ class MocapImporterBase(FaceRegionsBaseProperties):
             self.report({'ERROR'}, "Failed to import animation data.")
             futils.restore_scene_state(context, state_dict)
             return {'CANCELLED'}
-
+        if self.set_scene_frame_range:
+            if (animate_rot or animate_loc) and mocap_importer.head_action:
+                try:
+                    scene.frame_start, scene.frame_end = (int(x)
+                                                          for x in futils.get_action_frame_range(
+                                                          mocap_importer.head_action))
+                except ReferenceError:
+                    pass
         if animate_shapes:
             if self.bake_to_control_rig:
                 if mocap_action.fcurves:
@@ -839,11 +1332,18 @@ class MocapImporterBase(FaceRegionsBaseProperties):
                 else:
                     self.report({'WARNING'}, 'No target shapes found. Please update control rig first!')
                     bpy.data.actions.remove(mocap_action, do_unlink=True)
+                    mocap_action = None
                     futils.restore_scene_state(context, state_dict)
                     return {'CANCELLED'}
             else:
-                bpy.ops.faceit.populate_action(action_name=mocap_action.name)
-                scene.frame_start, scene.frame_end = (int(x) for x in futils.get_action_frame_range(mocap_action))
+                bpy.ops.faceit.populate_action(action_name=mocap_action.name, set_frame_current=False)
+                if self.set_scene_frame_range:
+                    if animate_shapes and mocap_action is not None and mocap_action.fcurves:
+                        try:
+                            scene.frame_start, scene.frame_end = (int(x)
+                                                                  for x in futils.get_action_frame_range(mocap_action))
+                        except ReferenceError:
+                            pass
         # ----------- Load Audio ----------------
         if self.load_audio_file:
             self._load_new_audio_file(scene, start_frame_mocap, audio_file)

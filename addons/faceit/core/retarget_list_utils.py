@@ -116,15 +116,6 @@ def get_all_set_target_shapes_regions(retarget_list):
     return shape_region_dict
 
 
-def get_all_available_shapes_names():
-    '''Return a list of all available Faceit related shape names'''
-    scene = bpy.context.scene
-    all_expression_names = get_all_set_target_shapes(scene.faceit_arkit_retarget_shapes)
-    all_expression_names.extend(get_all_set_target_shapes(scene.faceit_a2f_retarget_shapes))
-    all_expression_names.extend([ex.name for ex in scene.faceit_expression_list])
-    return all_expression_names
-
-
 def get_target_shape_key_dict(objects, retarget_shapes):
     '''Return a dictionary of all target shape keys from all objects'''
     target_shapes_dict = {}

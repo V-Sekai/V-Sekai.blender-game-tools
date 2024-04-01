@@ -1,5 +1,33 @@
+import bpy
+from bpy.types import Context
+
+from ..core.faceit_data import FACEIT_VERTEX_GROUPS
 from ..core.modifier_utils import get_faceit_armature_modifier
 from . import faceit_utils as futils
+
+
+def get_weights(ob, vgroup):
+    '''Generator that yields all vertex weights for the given vertex group'''
+    group_index = vgroup.index
+    for i, v in enumerate(ob.data.vertices):
+        for g in v.groups:
+            if g.group == group_index:
+                yield (i, g.weight)
+                break
+
+
+def store_vertex_group(obj, vertex_group, vertex_filter=None, remove_empty=False):
+    '''Store the vertex group data in a list of tuples (vertex_index, weight)'''
+    vertex_data = list(get_weights(obj, vertex_group))
+    if not vertex_data and remove_empty:
+        obj.vertex_groups.remove(vertex_group)
+    return vertex_data
+
+
+def apply_vertex_group(vertex_group, data):
+    '''Apply the vertex group data to the object'''
+    for i, w in data:
+        vertex_group.add([i], w, 'REPLACE')
 
 
 def remove_unused_vertex_groups_thresh(obj, thres=0):
@@ -43,6 +71,23 @@ def remove_zero_weights_from_verts(obj, thresh=0.0) -> None:
                 obj.vertex_groups[grp_idx].remove([v.index])
             except IndexError:
                 pass
+
+
+def cleanup_vertex_groups(obj, context: Context = None, limit=0.0, keep_single=False):
+    """Remove vertex group assignments which are not required
+        Parameters:
+            group_select_mode (enum in [], (optional)) Subset, Define which subset of groups shall be used
+            limit (float in [0, 1], (optional)) Limit, Remove vertices which weight is below or equal to this limit
+            keep_single (boolean, (optional)) Keep Single, Keep verts assigned to at least one group when cleaning
+    """
+    if context is None:
+        context = bpy.context
+    if bpy.app.version < (3, 6, 0):
+        override = {'object': obj, 'active_object': obj}
+        bpy.ops.object.vertex_group_clean(override, group_select_mode='ALL', limit=limit, keep_single=keep_single)
+    else:
+        with context.temp_override(object=obj, active_object=obj):
+            bpy.ops.object.vertex_group_clean(group_select_mode='ALL', limit=limit, keep_single=keep_single)
 
 
 def get_vertex_groups_from_objects(objects=None) -> list:
@@ -204,6 +249,19 @@ def get_faceit_vertex_grps(obj, groups_filter=None):
     return faceit_groups
 
 
+def get_assigned_faceit_vertex_groups(objects=None) -> list:
+    '''Return list of vertex groups for all passed @objects'''
+    faceit_groups = set(FACEIT_VERTEX_GROUPS)
+    found_groups = set()
+    if not objects:
+        objects = futils.get_faceit_objects_list()
+    for obj in objects:
+        found_groups.update(faceit_groups.intersection(obj.vertex_groups.keys()))
+        if len(found_groups) == len(faceit_groups):
+            break  # Stop searching if all faceit groups are found
+    return found_groups
+
+
 def get_objects_with_vertex_group(vgroup_name, objects=None, get_all=False):
     '''Find objects in the list with the specified vertex group'''
     objects = objects or futils.get_faceit_objects_list()
@@ -244,20 +302,17 @@ def has_verts_without_grps(obj):
     return any(not v.groups for v in obj.data.vertices)
 
 
-def invert_vertex_group_weights(obj, vgrp):
+def invert_vertex_group_weights(obj, vgrp, vs=None):
     '''Return new vertex group with invertex weights from the given @vgrp'''
     vgroup = obj.vertex_groups.new(name=vgrp.name + '_invert')
     vg_index = vgrp.index
-
-    for i, vert in enumerate(obj.data.vertices):
+    vs = vs if vs else obj.data.vertices
+    for vert in vs:
         available_groups = [v_group_elem.group for v_group_elem in vert.groups]
-
         inv_weight = 1
         if vg_index in available_groups:
-            inv_weight = 1 - vgrp.weight(i)
-
-        vgroup.add([i], inv_weight, 'REPLACE')
-
+            inv_weight = 1 - vgrp.weight(vert.index)
+        vgroup.add([vert.index], inv_weight, 'REPLACE')
     return vgroup
 
 

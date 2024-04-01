@@ -7,86 +7,58 @@ from ..core import faceit_utils as futils
 from ..core import vgroup_utils as vg_utils
 
 
-def remove_weights_from_non_facial_geometry(obj, face_hull, faceit_vertex_groups):
+def select_vertices_outside_face_hull(obj, face_hull):
     '''Removes all weights outside of the facial area on the main face object.
-    @face_obj: the main facial object
-    @face_hull: the convex hull that encompasses the face
-    @faceit_vertex_group: Leave the faceit_vertex_groups (teeth, tongue, eyes, rigid) untouched
+    Parameters:
+        @face_obj: the object
+        @face_hull: the convex hull that encompasses the face
     '''
-
     bm = bmesh.new()
     bm.from_mesh(obj.data)
-
     bm.verts.ensure_lookup_table()
     bm.faces.ensure_lookup_table()
-
     # deselect all verts:
     for f in bm.faces:
         f.select = False
     bm.select_flush(False)
-
-    # get all vertex indices in faceit defined groups. These should not be compared to selection island
-    # (faceit vertices will be overwritten by secondary binding process later on)
-    vs_secondary = []
-
-    for vgroup in faceit_vertex_groups:
-        if vgroup == 'faceit_eyelashes':
-            continue
-        vg_idx = obj.vertex_groups.find(vgroup)
-        if vg_idx == -1:
-            # vgroup does not exist
-            continue
-        vs_secondary.extend([v.index for v in obj.data.vertices if vg_idx in [vg.group for vg in v.groups]])
-
-    # get bmesh verts
-    verts_to_check = [v for v in bm.verts if v.index not in vs_secondary]
-
-    # select all verts that are inside the facial hull object and not in secondary groups
+    # select all verts that are inside the facial hull
     # false positives included due to rounding errors
-    for v in verts_to_check:
+    for v in bm.verts:
         pt = obj.matrix_world @ v.co
         if mesh_utils.is_inside_dot(pt, face_hull):
             v.select = True
+    if any([v.select for v in bm.verts]):
+        # SelectionIslands finds and stores selected and non-selected islands
+        selection_islands = mesh_utils.SelectionIslands(bm.verts, selection_state=True)
+        _selected_islands = selection_islands.get_islands()
 
-    ############## Selection errors #################
-
-    # SelectionIslands finds and stores selected and non-selected islands
-    selection_islands = mesh_utils.SelectionIslands(verts_to_check, selection_state=True)
-    _selected_islands = selection_islands.get_islands()
-
-    def _keep_only_biggest_island(islands, select_value):
-        '''keep only the biggest island, all smaller should be added to/ removed from selection/non-selection
-        @islands (list) : list of list of vertices
-        @select_value (Bool) : add to selection or remove from selection
-        '''
-        if len(islands) > 1:
-            biggest = max(islands, key=lambda x: len(x))
-            for i in islands:
-                if len(i) < len(biggest):
-                    for v in i:
-                        v.select_set(select_value)
-
-    # keep only the biggest island, the rest should be removed from selection
-    _keep_only_biggest_island(_selected_islands, select_value=False)
-    bm.select_flush(True)
-    bm.select_flush(False)
-
-    bm.to_mesh(obj.data)
-    bm.free()
-    # sometimes single verts get ignore by the selectionislands class, remove by shrink grow selection once
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_less()
-    bpy.ops.mesh.select_more()
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    ############## Remove Weights out of hull #################
-
-    # update the non-facial verts based on active selection
-    v_face_inv = [v.index for v in obj.data.vertices if not v.select and v.index not in vs_secondary]
-
-    # assign 1 to all non facial vertices
+        def _keep_only_biggest_island(islands, select_value):
+            '''keep only the biggest island, all smaller should be added to/ removed from selection/non-selection
+            @islands (list) : list of list of vertices
+            @select_value (Bool) : add to selection or remove from selection
+            '''
+            if len(islands) > 1:
+                biggest = max(islands, key=lambda x: len(x))
+                for i in islands:
+                    if len(i) < len(biggest):
+                        for v in i:
+                            v.select_set(select_value)
+        # keep only the biggest island, the rest should be removed from selection
+        _keep_only_biggest_island(_selected_islands, select_value=False)
+        bm.select_flush(True)
+        bm.select_flush(False)
+        bm.to_mesh(obj.data)
+        bm.free()
+        # sometimes single verts get ignore by the selectionislands class, remove by shrink grow selection once
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_less()
+        bpy.ops.mesh.select_more()
+        bpy.ops.object.mode_set(mode='OBJECT')
+        # assign all vertices outside of the hull to the DEF-face vertex group
+        v_face_inv = [v.index for v in obj.data.vertices if not v.select]
+    else:
+        v_face_inv = [v.index for v in obj.data.vertices]
     vg_utils.assign_vertex_grp(obj, v_face_inv, 'DEF-face', overwrite=True)
-
     mesh_utils.select_vertices(obj)
 
 
@@ -158,7 +130,7 @@ def split_by_faceit_groups(obj):
                 # No need to split, the object is already separated
                 break
             bpy.ops.object.mode_set(mode='EDIT')
-            mesh_utils.select_vertices(obj, vs, deselect_others=True)
+            mesh_utils.select_vertices(obj, [v.index for v in vs], deselect_others=True)
             bpy.ops.mesh.separate(type='SELECTED')
             bpy.ops.object.mode_set()
 

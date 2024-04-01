@@ -22,7 +22,7 @@
     },
     "eyeLookOutLeft": {
         "target_shapes": [
-            "Eye_L_Look_R"
+            "Eye_L_Look_L"
         ],
         "amplify": 1.0,
         "region": "Eyes"
@@ -296,14 +296,14 @@
     },
     "browDownLeft": {
         "target_shapes": [
-            "Brow_Compress_L"
+            "Brow_Drop_L"
         ],
         "amplify": 1.0,
         "region": "Brows"
     },
     "browDownRight": {
         "target_shapes": [
-            "Brow_Compress_R"
+            "Brow_Drop_R"
         ],
         "amplify": 1.0,
         "region": "Brows"
@@ -340,14 +340,14 @@
     },
     "cheekSquintLeft": {
         "target_shapes": [
-            "Cheek_Suck_L"
+            "Cheek_Raise_L"
         ],
         "amplify": 1.0,
         "region": "Cheeks"
     },
     "cheekSquintRight": {
         "target_shapes": [
-            "Cheek_Suck_R"
+            "Cheek_Raise_R"
         ],
         "amplify": 1.0,
         "region": "Cheeks"
@@ -368,8 +368,7 @@
     },
     "tongueOut": {
         "target_shapes": [
-            "Tongue_Bulge_L",
-            "Tongue_Bulge_R"
+            "Tongue_Out"
         ],
         "amplify": 1.0,
         "region": "Tongue"

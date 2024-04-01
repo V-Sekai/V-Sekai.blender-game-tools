@@ -2,7 +2,7 @@
 import bpy
 
 from .faceit_utils import get_faceit_armature
-from .faceit_data import BAKE_MOD_TYPES, MOD_TYPE_ICON_DICT
+from .faceit_data import BAKE_MOD_TYPES, MOD_TYPE_ICON_DICT, GENERATORS
 
 
 def add_faceit_armature_modifier(obj, rig, force=False, force_original=True):
@@ -44,8 +44,19 @@ def restore_modifier_order(obj):
     for mod_item in obj_item.modifiers:
         mod = obj.modifiers.get(mod_item.name)
         if mod:
-            override = {'object': obj, 'active_object': obj}
-            bpy.ops.object.modifier_move_to_index(override, modifier=mod.name, index=mod_item.index)
+            if bpy.app.version < (3, 6, 0):
+                override = {'object': obj, 'active_object': obj}
+                bpy.ops.object.modifier_move_to_index(
+                    override,
+                    modifier=mod.name,
+                    index=mod_item.index
+                )
+            else:
+                index = obj.modifiers.find(mod.name)
+                try:
+                    obj.modifiers.move(index, mod_item.index)
+                except RuntimeError:
+                    pass
 
 
 def set_mod_bake(obj, mod, bake=True):
@@ -280,12 +291,19 @@ def restore_bake_modifiers(obj, modifier_list):
     for mod_item in modifier_list:
         mod = obj.modifiers.get(mod_item.name)
         if mod:
-            override = {'object': obj, 'active_object': obj}
-            bpy.ops.object.modifier_move_to_index(
-                override,
-                modifier=mod.name,
-                index=mod_item.index
-            )
+            if bpy.app.version < (3, 6, 0):
+                override = {'object': obj, 'active_object': obj}
+                bpy.ops.object.modifier_move_to_index(
+                    override,
+                    modifier=mod.name,
+                    index=mod_item.index
+                )
+            else:
+                index = obj.modifiers.find(mod.name)
+                try:
+                    obj.modifiers.move(index, mod_item.index)
+                except RuntimeError:
+                    pass
         # Restore modifier drivers
         if obj.animation_data is not None:
             for dr_item in mod_item.drivers:
@@ -298,7 +316,7 @@ def restore_bake_modifiers(obj, modifier_list):
 
 def bind_valid_bake_modifiers(obj, modifier_list):
     '''Re-bind deform modifiers'''
-    bpy.context.scene.frame_set(0)
+    # bpy.context.scene.frame_set(0)
     for mod_item in modifier_list:
         if not mod_item.bake:
             continue
@@ -307,25 +325,33 @@ def bind_valid_bake_modifiers(obj, modifier_list):
             if mod.show_viewport:
                 if mod_item.type == 'SURFACE_DEFORM':
                     if mod_item.is_bound:
-                        bpy.ops.object.surfacedeform_bind(
-                            {"object": obj},
-                            modifier=mod.name
-                        )
-                        bpy.ops.object.surfacedeform_bind(
-                            {"object": obj},
-                            modifier=mod.name
-                        )
-                elif mod_item.type == 'CORRECTIVE_SMOOTH':
-                    if mod_item.smooth_type == 'BIND':
-                        if mod_item.is_bind:
-                            bpy.ops.object.correctivesmooth_bind(
+                        if bpy.app.version < (4, 0, 0):
+                            bpy.ops.object.surfacedeform_bind(
                                 {"object": obj},
                                 modifier=mod.name
                             )
-                        # bpy.ops.object.correctivesmooth_bind(
-                        #     {"object": obj},
-                        #     modifier=mod.name
-                        # )
+                            bpy.ops.object.surfacedeform_bind(
+                                {"object": obj},
+                                modifier=mod.name
+                            )
+                        else:
+                            with bpy.context.temp_override(object=obj, active_object=obj):
+                                bpy.ops.object.surfacedeform_bind(
+                                    modifier=mod.name,
+                                )
+                elif mod_item.type == 'CORRECTIVE_SMOOTH':
+                    if mod_item.smooth_type == 'BIND':
+                        if mod_item.is_bind:
+                            if bpy.app.version < (4, 0, 0):
+                                bpy.ops.object.correctivesmooth_bind(
+                                    {"object": obj},
+                                    modifier=mod.name
+                                )
+                            else:
+                                with bpy.context.temp_override(object=obj, active_object=obj):
+                                    bpy.ops.object.correctivesmooth_bind(
+                                        modifier=mod.name,
+                                    )
 
 
 def reorder_armature_in_modifier_stack(obj, arm_mod=None):
@@ -345,8 +371,16 @@ def reorder_armature_in_modifier_stack(obj, arm_mod=None):
         if above_mods:
             # Move it right below other armature mods
             new_idx = max(above_mods)
-            override = {'object': obj, 'active_object': obj}
-            bpy.ops.object.modifier_move_to_index(override, modifier=arm_mod.name, index=new_idx + 1)
+            if bpy.app.version < (3, 6, 0):
+                override = {'object': obj, 'active_object': obj}
+                bpy.ops.object.modifier_move_to_index(
+                    override,
+                    modifier=arm_mod.name,
+                    index=new_idx + 1
+                )
+            else:
+                index = obj.modifiers.find(arm_mod.name)
+                obj.modifiers.move(index, new_idx + 1)
 
 
 def get_modifiers_of_type(obj, type):
@@ -362,3 +396,18 @@ def apply_modifier(mod_name):
         bpy.ops.object.modifier_apply(modifier=mod_name)
     else:
         bpy.ops.object.modifier_apply(apply_as='DATA', modifier=mod_name)
+
+
+def move_above_generators(mod, obj):
+    '''Move the modifier above other generator mods'''
+    gen_mod_types = GENERATORS.copy()
+    gen_mod_types.remove('MULTIRES')  # Can't move above a modifier requiring original data.
+    above_mods = [i for i, m in enumerate(obj.modifiers) if m.type in gen_mod_types]
+    if above_mods:
+        new_idx = min(above_mods)
+        if bpy.app.version < (3, 6, 0):
+            override = {'object': obj, 'active_object': obj}
+            bpy.ops.object.modifier_move_to_index(override, modifier=mod.name, index=new_idx)
+        else:
+            index = obj.modifiers.find(mod.name)
+            obj.modifiers.move(index, new_idx)

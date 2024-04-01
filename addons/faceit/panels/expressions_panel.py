@@ -23,6 +23,7 @@ class FACEIT_PT_Expressions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
     bl_label = 'Expressions'
     bl_options = set()
     bl_idname = 'FACEIT_PT_Expressions'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/expressions/"
 
     @classmethod
     def poll(cls, context):
@@ -56,14 +57,35 @@ class FACEIT_PT_Expressions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
                 icon = 'TRIA_DOWN'
             else:
                 icon = 'TRIA_RIGHT'
-            row.prop(scene, 'faceit_expression_init_expand_ui', text='Create        ',
+
+            row.prop(scene, 'faceit_expression_init_expand_ui', text='Create',
                      icon=icon, icon_only=True, emboss=False)
+            draw_utils.draw_web_link(row, link="https://faceit-doc.readthedocs.io/en/latest/create-expressions/")
             if scene.faceit_expression_init_expand_ui:
                 col_above_list = box.column(align=True)
                 if shapes_baked:
                     col_above_list.enabled = False
-                row = col_above_list.row(align=True)
-                row.operator('faceit.append_action_to_faceit_rig', text='Load Faceit Expressions', icon='ACTION')
+                if scene.faceit_armature_type == 'ANY':
+                    # if not rig.data.faceit_control_bones:
+                    #     draw_utils.draw_text_block(
+                    #         col_above_list,
+                    #         text="No Control Bones registered for Faceit Rig (see Setup).",
+                    #         heading_icon='ERROR'
+                    #     )
+                    row = col_above_list.row(align=True)
+                    row.operator("faceit.register_control_bones",
+                                 text="Register Control Bones (Pose Mode)", icon='ADD')
+                    row.operator("faceit.select_control_bones", text="", icon='RESTRICT_SELECT_OFF')
+                    row.operator("faceit.clear_control_bones", text="", icon='X')
+                    row = col_above_list.row(align=True)
+                    row.operator("faceit.update_control_bones")
+                    col_above_list.separator()
+                    row = col_above_list.row(align=True)
+                    # row.operator('faceit.load_empty_expressions', text='Load Empty Expressions', icon='ACTION')
+                    row.operator('faceit.append_action_to_faceit_rig', text='Load Empty Expressions', icon='ACTION')
+                else:
+                    row = col_above_list.row(align=True)
+                    row.operator('faceit.append_action_to_faceit_rig', text='Load Faceit Expressions', icon='ACTION')
                 row = col_above_list.row(align=True)
                 op = row.operator('faceit.append_action_to_faceit_rig',
                                   text='Load Custom Expressions', icon='IMPORT')
@@ -78,6 +100,7 @@ class FACEIT_PT_Expressions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
 # START ######################### VERSION 1 ONLY #######################
         if not shapes_baked and scene.faceit_version == 1:
             row = col.row(align=True)
+            # TODO: check for the rig type. Version 1 should probably only work with Rigify rigs...
             op = row.operator('faceit.append_action_to_faceit_rig',
                               text='Load ARKit Expressions', icon='ACTION')
             op.is_version_one = True
@@ -130,10 +153,13 @@ class FACEIT_PT_Expressions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
             row = col_ul.row(align=True)
             op = row.operator('faceit.move_expression_item', text='', icon='TRIA_DOWN')
             op.direction = 'DOWN'
+            row = col.row()
+            row.operator('faceit.force_zero_frames', icon='FILE_REFRESH')
+
         elif 'overwrite_shape_action' not in bpy.data.actions and scene.faceit_expression_list:
             col.separator()
             row = col.row()
-            draw_utils.draw_text_block(row, text='The Expression Action has been deleted.')
+            draw_utils.draw_text_block(context, row, text='The Expression Action has been deleted.')
 
 
 class FACEIT_PT_ExpressionOptions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
@@ -141,6 +167,7 @@ class FACEIT_PT_ExpressionOptions(FACEIT_PT_BaseExpressions, bpy.types.Panel):
     bl_idname = 'FACEIT_PT_ExpressionOptions'
     bl_options = set()
     faceit_predecessor = 'FACEIT_PT_Expressions'
+    weblink = ""
 
     @classmethod
     def poll(cls, context):
@@ -228,29 +255,14 @@ class FACEIT_MT_ExpressionList(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-# START ####################### VERSION 2 ONLY #######################
-
+        row = layout.row()
+        row.operator('faceit.load_arkit_refernce', icon='USER')
         if scene.faceit_version == 2:
             row = layout.row()
             row.operator('faceit.clear_faceit_expressions', icon='TRASH')
-
-# END ######################### VERSION 2 ONLY #######################
-
         row = layout.row(align=True)
-        op = row.operator('faceit.pose_amplify', text='Amplify All Expressions', icon='ARROW_LEFTRIGHT')
-
+        op = row.operator('faceit.force_zero_frames', icon='FILE_REFRESH')
         row = layout.row(align=True)
-        op = row.operator('faceit.reset_expression', text='Reset All Expressions', icon='LOOP_BACK')
-        op.expression_to_reset = 'ALL'
-
+        op = row.operator('faceit.cleanup_unused_fcurves', icon='FCURVE')
         row = layout.row(align=True)
-        op = row.operator('faceit.reevaluate_corrective_shape_keys', icon='FILE_REFRESH')
-
-        row = layout.row(align=True)
-        row.operator('faceit.set_timeline', text='Timeline to Pose', icon='TIME')
-
-        row = layout.row(align=True)
-        op = row.operator('faceit.force_zero_frames', icon='KEYFRAME')
-
-        row = layout.row(align=True)
-        op = row.operator('faceit.reset_bone_constraints', icon='CONSTRAINT_BONE')
+        op = row.operator('faceit.reevaluate_corrective_shape_keys', icon='SHAPEKEY_DATA')

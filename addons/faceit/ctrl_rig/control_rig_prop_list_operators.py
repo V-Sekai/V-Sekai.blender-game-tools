@@ -143,7 +143,6 @@ def get_shape_keys_from_crig_target_objects_enum(self, context):
     ctrl_rig = futils.get_faceit_control_armature()
 
     if context is None:
-        print('get_shape_keys_from_main_object --> Context is None')
         return shapes
     # faceit_objects = futils.get_faceit_objects_list()
     crig_objects = ctrl_utils.get_crig_objects_list(ctrl_rig)

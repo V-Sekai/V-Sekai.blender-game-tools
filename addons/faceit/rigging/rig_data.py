@@ -746,3 +746,320 @@ bone_dict_symmetric = {
         'all': ['tongue.003']
     },
 }
+
+
+new_rigify_meta_bone_dict_symmetric = {
+    0: {
+        'head': ['jaw'],
+        'tail': [],
+        'all': [],
+    },
+    1: {
+        'head': ['chin'],
+        'tail': ['jaw'],
+        'all': [],
+    },
+    2: {
+        'head': ['chin.001'],
+        'tail': ['chin'],
+        'all': [],
+    },
+    3: {
+        'head': [],
+        'tail': ['chin.001'],
+        'all': [],
+    },
+    # chin side
+    4: {
+        'head': ['chin.L'],
+        'tail': [],
+        'all': [],
+    },
+    # lowerlip mid
+    5: {
+        'head': ['lip.B.L'],
+        'tail': [],
+        'all': [],
+    },
+    # lower lip side
+    6: {
+        'head': ['lip.B.L.001'],
+        'tail': ['lip.B.L'],
+        'all': [],
+    },
+    # lip corner
+    7: {
+        'head': ['cheek.B.L'],
+        'tail': ['chin.L', 'lip.T.L.001', 'lip.B.L.001'],
+        'all': [],
+    },
+    # upper lip mid
+    8: {
+        'head': ['lip.T.L'],
+        'tail': [],
+        'all': [],
+    },
+    # upper lip side
+    9: {
+        'head': ['lip.T.L.001'],
+        'tail': ['lip.T.L'],
+        'all': [],
+    },
+    # nose low
+    10: {
+        'head': [],
+        'tail': ['nose.003'],
+        'all': ['nose.004'],
+    },
+    # nose tip
+    11: {
+        'head': ['nose.002'],
+        'tail': ['nose.L.001', 'nose.001'],
+        'all': ['nose.002'],
+    },
+    # jaw mid
+    12: {
+        'head': ['jaw.L.001'],
+        'tail': ['jaw.L'],
+        'all': [],
+    },
+    # nose wing
+    13: {
+        'head': ['nose.L.001'],
+        'tail': ['nose.L'],
+        'all': [],
+    },
+    # cheeck low
+    14: {
+        'head': ['cheek.B.L.001'],
+        'tail': ['cheek.B.L'],
+        'all': [],
+    },
+    # cheeck high
+    15: {
+        'head': ['cheek.T.L.001'],
+        'tail': ['cheek.T.L'],
+        'all': [],
+    },
+    # nose side
+    16: {
+        'head': ['nose.L', ],
+        'tail': ['cheek.T.L.001'],
+        'all': [],
+    },
+    # EL_lower_1
+    17: {
+        'head': ['lid.B.L.001'],
+        'tail': ['lid.B.L'],
+        'all': [],
+    },
+    # EL_corner
+    18: {
+        'head': ['lid.B.L'],
+        'tail': ['lid.T.L.003', ],
+        'all': [],
+    },
+    # nose side
+    19: {
+        'head': ['lid.B.L.002', ],
+        'tail': ['lid.B.L.001', ],
+        'all': [],
+    },
+    # nose side
+    20: {
+        'head': [],
+        'tail': ['brow.B.L.003'],
+        'all': [],
+    },
+    21: {
+        'head': ['nose'],
+        'tail': ['brow.T.L.003'],
+        'all': [],
+    },
+    22: {
+        'head': ['jaw.L'],
+        'tail': ['temple.L'],
+        'all': [],
+    },
+    23: {
+        'head': ['lid.T.L.003'],
+        'tail': ['lid.T.L.002', ],
+        'all': [],
+    },
+    24: {
+        'head': ['lid.B.L.003'],
+        'tail': ['lid.B.L.002'],
+        'all': [],
+    },
+    25: {
+        'head': ['brow.T.L', 'cheek.T.L'],
+        'tail': ['cheek.B.L.001'],
+        'all': [],
+    },
+    26: {
+        'head': ['brow.B.L.003'],
+        'tail': ['brow.B.L.002'],
+        'all': [],
+    },
+    27: {
+        'head': ['lid.T.L.002'],
+        'tail': ['lid.T.L.001', ],
+        'all': [],
+    },
+    28: {
+        'head': ['lid.T.L'],
+        'tail': ['lid.B.L.003', ],
+        'all': [],
+    },
+    29: {
+        'head': ['lid.T.L.001'],
+        'tail': ['lid.T.L', ],
+        'all': [],
+    },
+    30: {
+        'head': ['brow.T.L.003'],
+        'tail': ['brow.T.L.002', 'forehead.L'],
+        'all': [],
+    },
+    31: {
+        'head': ['brow.B.L.002'],
+        'tail': ['brow.B.L.001'],
+        'all': [],
+    },
+    32: {
+        'head': ['brow.B.L'],
+        'tail': [],
+        'all': [],
+    },
+    33: {
+        'head': ['brow.B.L.001'],
+        'tail': ['brow.B.L'],
+        'all': [],
+    },
+    34: {
+        'head': ['brow.T.L.002'],
+        'tail': ['brow.T.L.001', 'forehead.L.001'],
+        'all': [],
+    },
+    35: {
+        'head': ['brow.T.L.001'],
+        'tail': ['brow.T.L', 'forehead.L.002'],
+        'all': [],
+    },
+    36: {
+        'head': [],
+        'tail': [],
+        'all': [],
+    },
+    37: {
+        'head': ['temple.L'],
+        'tail': [],
+        'all': [],
+    },
+    38: {
+        'head': ['forehead.L', ],
+        'tail': [],
+        'all': [],
+    },
+    39: {
+        'head': ['forehead.L.001'],
+        'tail': [],
+        'all': [],
+    },
+    40: {
+        'head': ['forehead.L.002'],
+        'tail': [],
+        'all': [],
+    },
+    101: {
+        'head': [],
+        'tail': [],
+        'all': ['eye.L'],
+    },
+    102: {
+        'head': [],
+        'tail': [],
+        'all': ['face'],
+    },
+    111: {
+        'head': [],
+        'tail': [],
+        'all': ['eye.R'],
+    },
+    103: {
+        'head': ['nose.001'],
+        'tail': ['nose'],
+        'all': [],
+    },
+    104: {
+        'head': [],
+        'tail': ['nose.004'],
+        'all': [],
+    },
+    105: {
+        'head': ['nose.003'],
+        'tail': ['nose.002'],
+        'all': [],
+    },
+    106: {
+        'head': [],
+        'tail': [],
+        'all': ['teeth.T'],
+    },
+    107: {
+        'head': [],
+        'tail': [],
+        'all': ['teeth.B'],
+    },
+    108: {
+        'head': [],
+        'tail': [],
+        'all': ['tongue', 'tongue.001', 'tongue.002'],
+    },
+    112: {
+        'head': ['tongue'],
+        'tail': [],
+        'all': []
+    },
+    113: {
+        'head': ['tongue.001'],
+        'tail': ['tongue'],
+        'all': []
+    },
+    114: {
+        'head': ['tongue.002'],
+        'tail': ['tongue.001'],
+        'all': []
+    },
+    115: {
+        'head': [],
+        'tail': ['tongue.002'],
+        'all': []
+    },
+    116: {
+        'head': [],
+        'tail': [],
+        'all': ['ear.L', 'ear.L.001', 'ear.L.002', 'ear.L.003', 'ear.L.004']
+    },
+    # TONGUE BONES NEED TO BE ADDED.
+}
+RIGIFY_META_RIG_LAYERS = {
+    0: ['face', 'ear.L', 'ear.R', 'eye.L', 'eye.R', 'teeth.T', 'jaw_master', 'teeth.B', 'nose_master'],
+    1: ['face', 'cheek.B.L', 'brow.T.L.001', 'cheek.B.R', 'brow.T.R.001', 'lip.T.L', 'lip.B.L', 'jaw', 'lip.T.R',
+        'lip.B.R', 'nose.L.001', 'nose.R.001'],
+    2: ['face', 'nose', 'nose.001', 'nose.004', 'ear.L.001', 'ear.L.002', 'ear.L.003', 'ear.L.004', 'ear.R.001',
+        'ear.R.002', 'ear.R.003', 'ear.R.004', 'brow.B.L', 'brow.B.L.001', 'brow.B.L.002', 'brow.B.L.003', 'brow.B.R',
+        'brow.B.R.001', 'brow.B.R.002', 'brow.B.R.003', 'forehead.L', 'forehead.L.001', 'forehead.L.002', 'temple.L',
+        'cheek.B.L.001', 'brow.T.L', 'brow.T.L.002', 'brow.T.L.003', 'forehead.R', 'forehead.R.001', 'forehead.R.002',
+        'temple.R', 'cheek.B.R.001', 'brow.T.R', 'brow.T.R.002', 'brow.T.R.003', 'lid.T.L', 'lid.T.L.001',
+        'lid.T.L.002', 'lid.T.L.003', 'lid.B.L', 'lid.B.L.001', 'lid.B.L.002', 'lid.B.L.003', 'lid.T.R',
+        'lid.T.R.001', 'lid.T.R.002', 'lid.T.R.003', 'lid.B.R', 'lid.B.R.001', 'lid.B.R.002', 'lid.B.R.003',
+        'cheek.T.L', 'cheek.T.L.001', 'cheek.T.R', 'cheek.T.R.001', 'lip.T.L.001', 'lip.B.L.001', 'chin', 'chin.001',
+        'lip.T.R.001', 'lip.B.R.001', 'jaw.L', 'jaw.L.001', 'chin.L', 'jaw.R', 'jaw.R.001', 'chin.R', 'tongue',
+        'tongue.001', 'tongue.002', 'chin_end_glue.001', 'nose.002', 'nose.003', 'brow.B.L.004', 'nose.L',
+        'brow.B.R.004', 'nose.R', 'brow_glue.B.L.002', 'brow_glue.B.R.002', 'lid_glue.B.L.002', 'lid_glue.B.R.002',
+        'cheek_glue.T.L.001', 'cheek_glue.T.R.001', 'nose_glue.L.001', 'nose_glue.R.001', 'nose_glue.004',
+        'nose_end_glue.004', 'forehead.L.003', 'forehead.L.004', 'forehead.L.005', 'forehead.L.006', 'forehead.R.003',
+        'forehead.R.004', 'forehead.R.005', 'forehead.R.006',
+        ],
+}

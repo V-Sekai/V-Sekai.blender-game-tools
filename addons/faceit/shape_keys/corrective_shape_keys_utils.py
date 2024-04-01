@@ -1,7 +1,6 @@
 
 import bpy
 
-from ..animate.animate_utils import remove_fcurve_from_action
 from ..core.shape_key_utils import has_shape_keys
 from ..core.faceit_utils import get_faceit_objects_list
 
@@ -113,8 +112,9 @@ def clear_all_corrective_shape_keys(objects, expression_list=None):
         else:
             continue
 
-        if len(obj.data.shape_keys.key_blocks) == 1:
-            obj.shape_key_clear()
+        if has_shape_keys(obj):
+            if len(obj.data.shape_keys.key_blocks) == 1:
+                obj.shape_key_clear()
 
     if expression_list:
         for exp_item in expression_list:
@@ -160,7 +160,9 @@ def remove_corrective_shape_key(expression_list, objects, expression_name=''):
         expression_item.corr_shape_key = False
         a = bpy.data.actions.get(CORRECTIVE_SK_ACTION_NAME)
         if a:
-            remove_fcurve_from_action(a, f'key_blocks["faceit_cc_{expression_name}"].value')
+            fc = a.fcurves.find(f'key_blocks["faceit_cc_{expression_name}"].value')
+            if fc:
+                a.fcurves.remove(fc)
     return True
 
 

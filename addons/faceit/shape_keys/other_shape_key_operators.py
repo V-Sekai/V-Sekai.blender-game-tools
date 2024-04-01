@@ -39,7 +39,7 @@ class FACEIT_OT_ClearShapeKeyAction(bpy.types.Operator):
 
 
 def get_shape_keys_apply_options(self, context):
-    return(
+    return (
         ('KEEP', "Keep", "Apply the current shape key values to the basis mesh. The applied shape keys will be set to 0.0."),
         ('DRIVEN', "Keep Driven", "Apply the current shape key values to the basis mesh. Remove the shape keys if they are not driven or corrective shapes"),
         ('REMOVE', "Remove", "Apply the current shape key values to the basis mesh and remove all shape keys, except corrective shapes."),
@@ -595,12 +595,13 @@ def _apply_modifier_to_mesh_with_shape_keys(context, obj, mod_name):
 
             bpy.data.objects.remove(temp_dup_obj)
 
-    for sk in obj.data.shape_keys.key_blocks:
-        rel_key_name = relative_keys_dict.get(sk.name, 'Basis')
-        if rel_key_name:
-            rel_key = obj.data.shape_keys.key_blocks.get(rel_key_name)
-            if rel_key:
-                sk.relative_key = rel_key
+    if sk_utils.has_shape_keys(obj):
+        for sk in obj.data.shape_keys.key_blocks:
+            rel_key_name = relative_keys_dict.get(sk.name, 'Basis')
+            if rel_key_name:
+                rel_key = obj.data.shape_keys.key_blocks.get(rel_key_name)
+                if rel_key:
+                    sk.relative_key = rel_key
 
     bpy.data.objects.remove(dup_obj)
 

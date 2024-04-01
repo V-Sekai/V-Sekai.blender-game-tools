@@ -1,42 +1,42 @@
-# ***** BEGIN GPL LICENSE BLOCK *****
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ***** END GPL LICENCE BLOCK *****
+'''
+Copyright (C) 2020 Fynn Braren
+fynn.braren@posteo.de
+
+Created by Fynn Braren
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
 
 import bpy
-
-from .landmarks.landmarks_utils import unlock_3d_view
-from . import auto_load
 from bpy.props import IntProperty
+
+
+from . import auto_load
+from .landmarks.landmarks_utils import unlock_3d_view
 
 bl_info = {
     'name': 'FACEIT',
     'author': 'Fynn Braren',
     'description': 'Facial Expressions And Performance Capture',
     'blender': (2, 80, 0),
-    'version': (2, 2, 8),
+    'version': (2, 3, 40),
     'location': 'View3D',
     'warning': '',
-    'wiki_url': "https://faceit-doc.readthedocs.io/en/latest/",
+    'doc_url': "https://faceit-doc.readthedocs.io/en/latest/",
     'tracker_url': "https://faceit-doc.readthedocs.io/en/latest/support/",
     'category': 'Animation'
 }
-
-
-auto_load.init()
 
 
 def update_use_vertex_size_scaling(self, context):
@@ -131,6 +131,26 @@ class FaceitPreferences(bpy.types.AddonPreferences):
         row.prop(self, "auto_lock_3d_view", icon='RESTRICT_VIEW_ON')
 
 
+def cleanse_modules():
+    """search for your plugin modules in blender python sys.modules and remove them"""
+
+    import sys
+
+    all_modules = sys.modules
+    all_modules = dict(sorted(all_modules.items(), key=lambda x: x[0]))  # sort them
+
+    for k, v in all_modules.items():
+        if k.startswith("faceit"):
+            if "auto_load" in k:
+                continue
+            del sys.modules[k]
+
+    return None
+
+
+auto_load.init()
+
+
 def register():
     bpy.utils.register_class(FaceitPreferences)
     auto_load.register()
@@ -149,4 +169,5 @@ def register():
 def unregister():
     bpy.utils.unregister_class(FaceitPreferences)
     auto_load.unregister()
+    cleanse_modules()
     del bpy.types.Scene.faceit_version

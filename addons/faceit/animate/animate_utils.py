@@ -1,11 +1,13 @@
 from math import floor
+import re
 from typing import Iterable, Tuple
 
 import bpy
 from mathutils import Matrix, Vector, Euler, Quaternion
+import numpy as np
 
 
-from ..core.fc_dr_utils import get_fcurve_from_bpy_struct
+from ..core.fc_dr_utils import get_fcurve_from_bpy_struct, kf_data_to_numpy_array, populate_keyframe_points_from_np_array
 
 
 def get_rotation_mode(target) -> str:
@@ -62,6 +64,8 @@ def convert_rotation_values(rot, rot_mode_from, rot_mode_to):
         @param rot_mode_from: rotation mode to convert from
         @param rot_mode_to: rotation mode to convert to
     """
+    if rot_mode_from == rot_mode_to:
+        return rot
     if rot_mode_from == 'EULER':
         rot = rot.to_quaternion()
         if rot_mode_to == 'AXIS_ANGLE':
@@ -69,7 +73,7 @@ def convert_rotation_values(rot, rot_mode_from, rot_mode_to):
             rot = [angle]
             rot.extend([i for i in vec])
         return rot
-    if rot_mode_from == 'QUATERNION':
+    elif rot_mode_from == 'QUATERNION':
         if rot_mode_to == 'EULER':
             rot = rot.to_euler()
         else:
@@ -77,38 +81,189 @@ def convert_rotation_values(rot, rot_mode_from, rot_mode_to):
             rot = [angle]
             rot.extend([i for i in vec])
         return rot
-    if rot_mode_to == 'EULER':
-        rot = rot.to_euler()
     else:
-        rot = rot.to_quaternion()
+        if rot_mode_to == 'EULER':
+            rot = rot.to_euler()
+        else:
+            rot = rot.to_quaternion()
     return rot
 
 
-def ensure_mouth_lock_rig_drivers(rig):
-    driver_dps = {
-        'pose.bones["MCH-jaw_master"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.001"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.002"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.003"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.001"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.002"].constraints["Copy Transforms.001"].influence',
-        'pose.bones["MCH-jaw_master.003"].constraints["Copy Transforms.001"].influence',
+def exit_nla_tweak_mode(context):
+    '''exit the nla tweak mode (important for nla editor actions)'''
+    current_type = bpy.context.area.type
+    bpy.context.area.type = 'NLA_EDITOR'
+    bpy.ops.nla.tweakmode_exit()
+    bpy.context.area.type = current_type
+
+
+def create_default_zero_frames(zero_frames, action, rig, bone_filter: list = None):
+    '''Create zero keyframes for the given action.'''
+    for pb in rig.pose.bones:
+        if bone_filter and pb.name not in bone_filter:
+            continue
+        rot_mode = get_rotation_mode(pb)
+        data_paths = [
+            "location",
+            get_data_path_from_rotation_mode(rot_mode),
+            "scale",
+        ]
+
+        for prop_dp in data_paths:
+            prop = pb.bl_rna.properties.get(prop_dp)
+            if prop and getattr(prop, "is_animatable", False):
+                # Get the default value
+                if not hasattr(prop, "default"):
+                    continue
+                dp = f'pose.bones["{pb.name}"].{prop.identifier}'
+                if getattr(prop, "is_array", False):
+                    default_array = [p for p in prop.default_array]
+                else:
+                    default_array = [prop.default]
+                for i, default in enumerate(default_array):
+                    fc = action.fcurves.find(dp, index=i)
+                    if fc is None:
+                        fc = action.fcurves.new(dp, index=i, action_group=pb.name)
+                    # Check if the fcurve contains non-default values.
+                    # existing_kf_data = kf_data_to_numpy_array(fc)
+                    # if np.all(existing_kf_data[:, 1] == default):
+                    # Create the keyframe data
+                    kf_data = np.array([(f, default) for f in zero_frames], dtype=float)
+                    populate_keyframe_points_from_np_array(fc, kf_data, add=True, join_with_existing=True)
+
+
+# Precompile the regular expressions
+bone_name_pattern = re.compile(r'^pose.bones\["([^"]+)"\]')
+custom_property_pattern = re.compile(r'^\[["\']([^"^\']+?)["\']\]')
+bone_property_pattern = re.compile(r'\A\.(\w+)(?:(?![.\[\]])\b)(?!\["?[^"]+"?\])')
+constraint_pattern = re.compile(r'^\.constraints\["([^"]+)"\]\.(\w+)')
+
+
+def parse_pose_bone_data_path(data_path):
+    '''Parses a pose bone data path and returns the property values.'''
+    result = {
+        "bone_name": "",
+        "prop_name": "",
+        "custom_prop_name": "",
+        # "constraint_name": "",
+        # "constraint_prop_name": "",
     }
-    for dp in driver_dps:
-        dr = rig.animation_data.drivers.find(dp)
-        if dr:
-            pass
+    bone_match = bone_name_pattern.match(data_path)
+    if bone_match:
+        result["bone_name"] = bone_match.group(1)
+        remaining_path = data_path[bone_match.end():]
+        # Check for custom property
+        custom_prop_match = custom_property_pattern.search(remaining_path)
+        if custom_prop_match:
+            result["custom_prop_name"] = custom_prop_match.group(1)
         else:
-            dr = rig.animation_data.drivers.new(dp)
-            driver = dr.driver
-            var = driver.variables.new()
-            var.name = 'mouth_lock'
-            var.type = 'SINGLE_PROP'
-            t = var.targets[0]
-            t.id_type = 'OBJECT'
-            t.id = rig
-            t.data_path = 'pose.bones["jaw_master"]["mouth_lock"]'
+            constraint_match = constraint_pattern.search(remaining_path)
+            if constraint_match:
+                pass
+                # result["constraint_name"] = constraint_match.group(1)
+                # result["constraint_prop_name"] = constraint_match.group(2)
+            else:
+                # Check for Pose Bone Properties, ensure no trailing dot or square bracket
+                bone_prop_match = bone_property_pattern.search(remaining_path)
+                if bone_prop_match:
+                    result["prop_name"] = bone_prop_match.group(1)
+    return result
+
+
+# if __name__ == "__main__":
+#     test_path = 'pose.bones["arm"].constraints["limit_rotation"].enforce'
+#     print(parse_pose_bone_data_path(test_path))
+#     test_path = 'pose.bones["arm"].rotation_quaternion'
+#     print(parse_pose_bone_data_path(test_path))
+#     test_path = 'pose.bones["arm"]["mouth_close"]'
+#     print(parse_pose_bone_data_path(test_path))
+#     test_path = "pose.bones[\"jaw_master\"][\"mouth_lock\"]"
+#     print(parse_pose_bone_data_path(test_path))
+
+
+def get_default_value_from_fcurve(rig, fc):
+    '''Gets the property from the data_path and returns a default if it exists.'''
+    dp = fc.data_path
+    array_index = fc.array_index
+    default = None
+    if "pose.bones" in dp:
+        parsed_data_path = parse_pose_bone_data_path(dp)
+        bone_name = parsed_data_path["bone_name"]
+        prop_name = parsed_data_path["prop_name"]
+        custom_prop_name = parsed_data_path["custom_prop_name"]
+        # constraint_name = parsed_data_path["constraint_name"]
+        # constraint_prop_name = parsed_data_path["constraint_prop_name"]
+        pb = rig.pose.bones.get(bone_name)
+        if prop_name:
+            prop = pb.bl_rna.properties.get(prop_name)
+            if prop:
+                if hasattr(prop, "default"):
+                    if getattr(prop, "is_array", False):
+                        default = prop.default_array[array_index]
+                    else:
+                        default = prop.default
+        elif custom_prop_name:
+            prop = pb.id_properties_ui(custom_prop_name)
+            default = prop.as_dict().get("default")
+            if default is not None:
+                if hasattr(default, "__iter__"):
+                    default = default[array_index]
+        # elif constraint_name:
+        #     c = pb.constraints.get(constraint_name)
+        #     prop = c.bl_rna.properties.get(constraint_prop_name)
+        #     if prop:
+        #         if hasattr(prop, "default"):
+        #             if getattr(prop, "is_array", False):
+        #                 default = prop.default_array[array_index]
+        #             else:
+        #                 default = prop.default
+    # TODO: Find non pose bone animated props.
+    return default
+
+
+def update_zero_frames(zero_frames, action, rig, update_only_non_default_curves=False):
+    '''Check the existing fcurves and get the default value for the keyed property.
+        If the fcurve contains non-default values, reset the zero frames. Otherwise ignore.
+    '''
+    # for pb in rig.pose.bones:
+    for fc in action.fcurves:
+        default = get_default_value_from_fcurve(rig, fc)
+        if default is None:
+            print(f"Skipping fcurve {fc.data_path} because no default value could be found.")
+            return
+        if update_only_non_default_curves:
+            # Check if the fcurve contains non-default values.
+            existing_kf_data = kf_data_to_numpy_array(fc)
+            if np.all(existing_kf_data[:, 1] == default):
+                # print(f"the fcurve {fc} contains only default values.")
+                continue
+        # Create the keyframe data
+        kf_data = np.array([(f, default) for f in zero_frames], dtype=float)
+        populate_keyframe_points_from_np_array(
+            fc, kf_data, add=True, join_with_existing=True, overwrite_old_range=False)
+
+
+def cleanup_unused_fcurves(rig, action):
+    '''Removes Fcurves that contain no keyframes or only default values.
+        Returns:
+            n_removed: number of removed fcurves
+    '''
+    n_removed = 0
+    for fc in action.fcurves:
+        if fc.is_empty:
+            action.fcurves.remove(fc)
+            n_removed += 1
+            continue
+        default = get_default_value_from_fcurve(rig, fc)
+        if default is None:
+            print(f"Skipping fcurve {fc.data_path} because no default value could be found.")
+            continue
+        # Check if the fcurve contains non-default values.
+        existing_kf_data = kf_data_to_numpy_array(fc)
+        if np.all(existing_kf_data[:, 1] == default):
+            n_removed += 1
+            action.fcurves.remove(fc)
+    return n_removed
 
 
 def scale_action_to_rig(action, scale, invert=False, filter_skip: list = None, frames: list = None) -> None:
@@ -151,20 +306,6 @@ def scale_action_to_rig(action, scale, invert=False, filter_skip: list = None, f
             for key in fcurve.keyframe_points:
                 if key.co[0] in frames:
                     key.co[1] *= scale[i] if invert is False else 1 / scale[i]
-
-
-def matrix_world(armature_ob, bone_name):
-    '''Recursive function to find the true world matrix for a given bone (without parent transforms).'''
-    local = armature_ob.data.bones[bone_name].matrix_local
-    basis = armature_ob.pose.bones[bone_name].matrix_basis
-
-    parent = armature_ob.pose.bones[bone_name].parent
-
-    if parent is None:
-        return local @ basis
-
-    parent_local = armature_ob.data.bones[parent.name].matrix_local
-    return matrix_world(armature_ob, parent.name) @ (parent_local.inverted() @ local) @ basis
 
 
 def scale_poses_to_new_dimensions_slow(
@@ -332,141 +473,6 @@ def amplify_pose(action, filter_pose_bone_names: list = None, frame=-1, scale_fa
                 kf.co[1] = ((kf.co[1] - 1.0) * scale_factor) + 1.0
 
 
-def set_pose_from_timeline(context):
-    '''Set the timeline cursor to the closes expression frame.'''
-    scene = context.scene
-    shape_index = scene.faceit_expression_list_index
-    if scene.faceit_expression_list[shape_index].frame != scene.frame_current:
-        frame = scene.frame_current
-        new_index = floor(frame / 10)  # shapes animation every 10 frames
-        if frame % 10 == 0:
-            new_index = new_index - 1
-        scene.faceit_expression_list_index = new_index
-
-
-BONE_CONSTRAINT_DP_VALUE_DICT = {
-    'lip.T.L.001': {"Copy Location": 0.25,
-                    "Copy Location.001": 0.5,
-                    "Copy Rotation": 1.0,
-                    "Copy Scale": 1.0, },
-    'lip.T.R.001': {"Copy Location": 0.25,
-                    "Copy Location.001": 0.5,
-                    "Copy Rotation": 1.0,
-                    "Copy Scale": 1.0, },
-    'lip.B.L.001': {"Copy Location": 0.25,
-                    "Copy Location.001": 0.5,
-                    "Copy Rotation": 1.0,
-                    "Copy Scale": 1.0, },
-    'lip.B.R.001': {"Copy Location": 0.25,
-                    "Copy Location.001": 0.5,
-                    "Copy Rotation": 1.0,
-                    "Copy Scale": 1.0, },
-    'lid.T.L.003': {"Copy Location": 0.6,
-                    "Copy Rotation": 1.0, },
-    'lid.T.L.002': {"Copy Location": 0.5},
-    'lid.T.L.001': {"Copy Location": 0.6,
-                    "Copy Rotation": 1.0, },
-    'lid.B.L.001': {"Copy Rotation": 1.0,
-                    "Copy Location": 0.6, },
-    'lid.B.L.002': {"Copy Location": 0.5,
-                    "Copy Location.001": 0.1, },
-    'lid.B.L.003': {"Copy Rotation": 1.0,
-                    "Copy Location": 0.6, },
-    'brow.B.L.003': {"Copy Location": 0.6},
-    'brow.B.L.002': {"Copy Location": 0.25},
-    'brow.B.L.001': {"Copy Location": 0.6},
-    'lid.T.R.003': {"Copy Location": 0.6, },
-    'lid.T.R.002': {"Copy Location": 0.5, },
-    'lid.T.R.001': {"Copy Location": 0.6, },
-    'lid.B.R.001': {"Copy Location": 0.6, },
-    'lid.B.R.002': {"Copy Location": 0.5,
-                    "Copy Location.001": 0.1, },
-    'lid.B.R.003': {"Copy Location": 0.6, },
-    'brow.B.R.003': {"Copy Location": 0.6, },
-    'brow.B.R.002': {"Copy Location": 0.25, },
-    'brow.B.R.001': {"Copy Location": 0.6, },
-    'nose.005': {'Copy Location': 0.5},
-    'nose.003': {'Copy Location': 0.5},
-    'nose.L.001': {'Copy Location': 0.2},
-    'nose.R.001': {'Copy Location': 0.2},
-    'cheek.T.L.001': {'Copy Location': 0.0},
-    'cheek.T.R.001': {'Copy Location': 0.0},
-    'nose.L': {'Copy Location': 0.25},
-    'nose.R': {'Copy Location': 0.25},
-    'chin.002': {'Copy Location': 0.5},
-    'cheek.B.L.001': {'Copy Location': 0.5},
-    'cheek.B.R.001': {'Copy Location': 0.5},
-    'brow.T.L.002': {'Copy Location': 0.5, 'Copy Location.001': 0.5},
-    'brow.T.R.002': {'Copy Location': 0.5, 'Copy Location.001': 0.5},
-}
-
-
-def restore_constraints_to_default_values(rig) -> None:
-    '''Restore all Constraints to their default values.'''
-    for b_name, constraints_dict in BONE_CONSTRAINT_DP_VALUE_DICT.items():
-        pbone = rig.pose.bones.get(b_name)
-        if pbone:
-            for c, influence in constraints_dict.items():
-                constraint = pbone.constraints.get(c)
-                if constraint:
-                    constraint.influence = influence
-
-
-def remove_constraint_influence_for_frame(
-        arm_obj: bpy.types.Object,
-        bone: bpy.types.PoseBone,
-        frame: int,
-        replace_fcurve=False,
-        action: bpy.types.Action = None) -> None:
-    '''
-    Removes the influence for the specified frame for the specified bone
-    @arm_obj [bpy.types.Object]: the object holding the armature data
-    @bone [bpy.types.PoseBone]: a pose bone (in arm_obj.pose.bones)
-    @frame [int]: the frame that should be free of constraint influence
-    @replace_fcurve [bool]: if true, removes the existing fcurve and recreates it.
-    @action [bpy.types.Action]: Specific action to process.
-    '''
-    if (action or arm_obj) and replace_fcurve:
-        action = action or arm_obj.animation_data.action
-        if action:
-            for b_name, constraints_dict in BONE_CONSTRAINT_DP_VALUE_DICT.items():
-                for c, _influence in constraints_dict.items():
-                    dp = f'pose.bones["{b_name}"].constraints["{c}"].influence'
-                    fc = action.fcurves.find(dp)
-                    if fc:
-                        action.fcurves.remove(fc)
-
-    frames_value_dict = {
-        'original': [-10, 1],
-        'zero': [-9, 0],
-    }
-
-    bone_constraints = BONE_CONSTRAINT_DP_VALUE_DICT.get(bone.name)
-    if not bone_constraints:
-        return
-
-    for c_name, influence_value in bone_constraints.items():
-        c = bone.constraints.get(c_name)
-        if not c:
-            continue
-
-        dp = f'pose.bones["{bone.name}"].constraints["{c_name}"].influence'
-
-        if influence_value:
-            for value, frames in frames_value_dict.items():
-                # if influence_value:
-
-                if value == 'zero':
-                    c.influence = 0
-                else:
-                    c.influence = influence_value
-
-                for f in frames:
-                    arm_obj.keyframe_insert(
-                        data_path=dp,
-                        frame=frame + f)
-
-
 def copy_keyframe(action, frame_from, frame_to, dp_filter: list = None):
     '''Copy a keyframe_point from one frame to another'''
     for fc in action.fcurves:
@@ -478,27 +484,6 @@ def copy_keyframe(action, frame_from, frame_to, dp_filter: list = None):
             if kf.co[0] == frame_from:
                 fc.keyframe_points.insert(frame_to, kf.co[1])
                 fc.update()
-
-
-def mirror_key_frame(context, frame_from, frame_to):
-    '''
-    mirror keyframe to the opposite side
-    @frame_from : frame mirror from
-    @frame_to : frame mirror to
-    '''
-    context = bpy.context
-    current_type = context.area.type
-    context.area.type = 'DOPESHEET_EDITOR'
-
-    bpy.ops.action.select_all(action='DESELECT')
-    # select channels to effect
-    bpy.ops.anim.channels_select_all(action='SELECT')
-    context.scene.frame_current = frame_from
-    bpy.ops.action.select_column(mode='CFRA')
-    bpy.ops.action.copy()
-    context.scene.frame_current = frame_to
-    bpy.ops.action.paste(flipped=True)
-    bpy.context.area.type = current_type
 
 
 def get_default_fc_value(data_path, idx=-1):
@@ -572,21 +557,6 @@ def remove_all_animation_for_frame(action, frame):
         for key in curve.keyframe_points:
             if key.co[0] == frame:
                 curve.keyframe_points.remove(key, fast=True)
-
-
-def remove_fcurve_from_action(action, fcurve_data_path):
-    '''Remove an fcurve from action
-    @action [bpy.types.Action]: the action
-    @fcurve_data_path [str]: the data_path for the fcurve to remove
-    '''
-    fc = action.fcurves.find(fcurve_data_path)
-    if fc:
-        action.fcurves.remove(fc)
-
-
-def get_active_expression():
-    ''' returns the active expression from expression_list property'''
-    return bpy.context.scene.faceit_expression_list[bpy.context.scene.faceit_expression_list_index]
 
 
 def create_overwrite_animation(rig_obj):

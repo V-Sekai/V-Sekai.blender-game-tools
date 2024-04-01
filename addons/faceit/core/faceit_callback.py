@@ -1,4 +1,6 @@
 import bpy
+import bmesh
+
 from ..landmarks.landmarks_utils import unlock_3d_view
 
 
@@ -32,34 +34,21 @@ def msgbus(self, context):
         args=(context,),
         notify=faceit_switch_modes_callback,
     )
-
-    # subscribe_to_modifier = bpy.context.object.path_resolve("modifiers.active", False)
-    # subscribe_to_modifier = bpy.types.Object, "modifiers"
-    # subscribe_to_modifier = bpy.types.Modifier, "is_active"
-    # print("subscribe to", subscribe_to_modifier)
-    # bpy.msgbus.subscribe_rna(
-    #     key=subscribe_to_modifier,
-    #     owner=self,
-    #     args=(context,),
-    #     notify=modifiers_callback,
-    # )
-
     context.scene.faceit_subscribed = True
 
 
 def faceit_switch_modes_callback(context):
     '''Runs when the object mode changes'''
-    if context.preferences.addons['faceit'].preferences.auto_lock_3d_view:
-        obj = context.object
-        if obj is None:
-            return
-        if obj.name == "facial_landmarks":
-            if obj.mode == 'EDIT':
-                if obj["state"] == 3:
-                    bpy.ops.faceit.lock_3d_view_front('INVOKE_DEFAULT', set_edit_mode=False,
-                                                      find_area_by_mouse_position=True)
-            else:
-                unlock_3d_view()
+    obj = context.object
+    if obj is None:
+        return
+    if obj.name == "facial_landmarks":
+        if obj.mode == 'EDIT':
+            if obj["state"] == 3 and context.preferences.addons['faceit'].preferences.auto_lock_3d_view:
+                bpy.ops.faceit.lock_3d_view_front('INVOKE_DEFAULT', set_edit_mode=False,
+                                                  find_area_by_mouse_position=True)
+        else:
+            unlock_3d_view()
 
 
 def faceit_active_object_callback(context):
@@ -83,27 +72,3 @@ def faceit_active_object_callback(context):
             index = scene.faceit_face_objects.find(active_object.name)
             if index not in (-1, scene.faceit_face_index):
                 scene.faceit_face_index = index
-
-
-# def modifiers_callback(context):
-#     print("yo")
-#     print("yoooo")
-#     scene = context.scene
-#     active_object = bpy.context.active_object
-#     if active_object is None:
-#         return
-#     obj = scene.faceit_face_objects.get(active_object.name)
-#     if obj:
-#         print("found change.")
-#         obj.modifiers.clear()
-#         for mod in active_object.modifiers:
-#             mod_item = obj.modifiers.add()
-#             mod_item.name = mod.name
-#             mod_item.type = mod.type
-#             mod_item.show_viewport = mod.show_viewport
-#             mod_item.show_render = mod.show_render
-#             mod_item.show_in_editmode = mod.show_in_editmode
-#             mod_item.show_on_cage = mod.show_on_cage
-#             mod_item.show_expanded = mod.show_expanded
-#             mod_item.show_in_editmode = mod.show_in_editmode
-#             mod_item.show_in_editmode = mod.show_in_editmode

@@ -5,7 +5,7 @@ from mathutils import Vector
 
 from .ui import FACEIT_PT_Base
 from ..core.retarget_list_utils import get_index_of_parent_collection_item
-from ..core.faceit_utils import get_faceit_armature, using_rigify_armature
+from ..core.faceit_utils import get_faceit_armature
 from ..panels.draw_utils import draw_text_block
 
 
@@ -43,6 +43,7 @@ class FACEIT_PT_BakeExpressions(FACEIT_PT_BaseBake, Panel):
     bl_label = 'Bake Shape Keys'
     bl_options = set()
     bl_idname = 'FACEIT_PT_BakeExpressions'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/bake/"
 
     @classmethod
     def poll(cls, context):
@@ -73,6 +74,7 @@ class FACEIT_PT_ShapeKeyUtils(FACEIT_PT_BaseBake, Panel):
     bl_label = 'Shape Key Utils'
     bl_idname = 'FACEIT_PT_ShapeKeyUtils'
     faceit_predecessor = 'FACEIT_PT_RigUtils'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/utils/#shape-key-utils"
 
     @classmethod
     def poll(cls, context):
@@ -104,11 +106,12 @@ class FACEIT_PT_RigUtils(FACEIT_PT_BaseBake, Panel):
     bl_label = 'Rig Utils'
     bl_idname = 'FACEIT_PT_RigUtils'
     faceit_predecessor = 'FACEIT_PT_BakeExpressions'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/utils/#rig-utils"
 
     @classmethod
     def poll(cls, context):
         if super().poll(context):  # and context.scene.faceit_armature
-            return not using_rigify_armature()
+            return not context.scene.faceit_use_existing_armature
 
     def draw(self, context):
         layout = self.layout
@@ -132,6 +135,7 @@ class FACEIT_PT_RigUtils(FACEIT_PT_BaseBake, Panel):
                 if body_rig:
                     if body_rig.scale != Vector((1,) * 3):
                         draw_text_block(
+                            context,
                             layout=col,
                             text=f"Apply the scale on {body_rig.name} before joining!",
                             heading='WARNING'
@@ -147,6 +151,7 @@ class FACEIT_PT_Other(FACEIT_PT_BaseBake, Panel):
     bl_label = 'Other Utils'
     bl_idname = 'FACEIT_PT_Other'
     faceit_predecessor = 'FACEIT_PT_ShapeKeyUtils'
+    weblink = "https://faceit-doc.readthedocs.io/en/latest/utils/#other"
 
     @classmethod
     def poll(cls, context):
@@ -165,23 +170,6 @@ class FACEIT_PT_Other(FACEIT_PT_BaseBake, Panel):
             row.label(text='Apply Shape Keys')
             row = col.row(align=True)
             row.operator('faceit.apply_shape_keys_to_mesh', icon='SHAPEKEY_DATA').obj_name = context.object.name
-
-
-class FACEIT_PT_Finalize(FACEIT_PT_BaseBake, Panel):
-    bl_label = 'Clean Up (Destructive)'
-    bl_idname = 'FACEIT_PT_Finalize'
-    faceit_predecessor = 'FACEIT_PT_Other'
-
-    @classmethod
-    def poll(cls, context):
-        return super().poll(context)
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row(align=True)
-        row.operator('faceit.cleanup_scene', icon='TRASH')
-        row = layout.row(align=True)
-        row.operator('faceit.cleanup_objects', text='Clean Up Objects', icon='TRASH')
 
 
 class FACE_OBJECTS_MODIFIERS_UL_list(bpy.types.UIList):

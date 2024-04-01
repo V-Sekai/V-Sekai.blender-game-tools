@@ -58,7 +58,7 @@ def check_warnings_for_face_item(item):
     all_warnings = []
     rig = futils.get_faceit_armature()
     if not bpy.context.scene.faceit_shapes_generated:
-        if not futils.using_rigify_armature():
+        if not bpy.context.scene.faceit_use_existing_armature:
             if 'faceit_main' in obj.vertex_groups:
                 if get_island_count_in_main_group(obj) > 1:
                     all_warnings.append('MAIN_GROUP')
@@ -138,7 +138,7 @@ class FACEIT_OT_CheckWarning(bpy.types.Operator):
         else:
             scene.faceit_show_warnings = False
             self.report({'INFO'}, 'No Warnings found.')
-        if not futils.using_rigify_armature():
+        if not context.scene.faceit_use_existing_armature:
             if not any('faceit_main' in obj.vertex_groups for obj in futils.get_faceit_objects_list()):
                 self.report({'WARNING'}, 'Main Face Vertex Island could not be found. Please assign the Main Vertex Group!')
         return {'FINISHED'}
@@ -166,8 +166,8 @@ class FACEIT_OT_DisplayWarning(bpy.types.Operator):
         for warn in warnings:
             if warn:
                 warning_message = WARNINGS_OUT[warn]
-                draw_text_block(layout=layout, text=warning_message,
-                                heading=warn.replace('_', ' '), heading_icon='ERROR')  # code=solution_popover)
+                draw_text_block(context, layout=layout, text=warning_message,
+                                heading=warn.replace('_', ' '), heading_icon='ERROR', in_operator=True)
                 if warn in ('MIRROR', 'SURFACE_DEFORM'):
                     row = layout.row()
                     op = row.operator("faceit.apply_modifier_object_with_shape_keys", icon='CHECKMARK')

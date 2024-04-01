@@ -40,6 +40,7 @@ LANDMARKS_MIRROR_VERTICES_DICT = {
     67: 66,
     69: 68,
     71: 70,
+    72: 73,
 }
 
 LANDMAKRS_MID_VERTICES_DICT = [0, 1, 2, 3, 6, 9, 14, 21, 36, 65]

@@ -85,41 +85,55 @@ class FaceRegionsBaseProperties():
         name='Eyes',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
+    )
+    eyelids: BoolProperty(
+        name='Eyelids',
+        options=set(),
+        default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     brows: BoolProperty(
         name='Brows',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     cheeks: BoolProperty(
         name='Cheeks',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     nose: BoolProperty(
         name='Nose',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     mouth: BoolProperty(
         name='Mouth',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     tongue: BoolProperty(
         name='Tongue',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
     other: BoolProperty(
         name='Other',
         options=set(),
         default=True,
+        override={'LIBRARY_OVERRIDABLE'},
     )
 
     def get_active_regions(self):
         active_regions = {
             'eyes': self.eyes,
+            'eyelids': self.eyelids,
             'brows': self.brows,
             'cheeks': self.cheeks,
             'nose': self.nose,
@@ -160,7 +174,7 @@ class ResetRegionsOperatorBase:
         for p in props:
             face_regions_prop.property_unset(p)
 
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 
 class SetDefaultRegionsBase:
@@ -214,21 +228,23 @@ class DrawRegionsFilterBase:
         icon_value = 'HIDE_OFF' if face_regions.eyes else 'HIDE_ON'
         row.prop(face_regions, 'eyes', icon=icon_value)
         row = col.row(align=True)
+        icon_value = 'HIDE_OFF' if face_regions.eyelids else 'HIDE_ON'
+        row.prop(face_regions, 'eyelids', icon=icon_value)
         icon_value = 'HIDE_OFF' if face_regions.cheeks else 'HIDE_ON'
         row.prop(face_regions, 'cheeks', icon=icon_value)
+        row = col.row(align=True)
         icon_value = 'HIDE_OFF' if face_regions.nose else 'HIDE_ON'
         row.prop(face_regions, 'nose', icon=icon_value)
-        row = col.row(align=True)
         icon_value = 'HIDE_OFF' if face_regions.mouth else 'HIDE_ON'
         row.prop(face_regions, 'mouth', icon=icon_value)
+        row = col.row(align=True)
         icon_value = 'HIDE_OFF' if face_regions.tongue else 'HIDE_ON'
         row.prop(face_regions, 'tongue', icon=icon_value)
-        row = col.row(align=True)
         icon_value = 'HIDE_OFF' if face_regions.other else 'HIDE_ON'
         row.prop(face_regions, 'other', icon=icon_value)
 
     def execute(self, context):
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 
 class RetargetingBase:
@@ -373,20 +389,16 @@ class RetargetShapesListBase():
         return a list of flags (based on given flags if not None),
         or an empty list if no flags were given and no filtering has been done.
         """
-
         if not pattern or not items:  # Empty pattern or list = no filtering!
             return flags or []
-
         if flags is None:
             flags = [0] * len(items)
-
         # Implicitly add heading/trailing wildcards.
         pattern = "*" + pattern + "*"
-
         for i, item in enumerate(items):
             name = getattr(item, propname, None)
             # This is similar to a logical xor
-            if bool(name and fnmatch.fnmatch(name, pattern)) is not bool(reverse):
+            if bool(name and fnmatch.fnmatch(name.lower(), pattern.lower())) is not bool(reverse):
                 flags[i] &= bitflag
             else:
                 flags[i] = 0
@@ -502,14 +514,15 @@ class DrawTargetShapesListBase(RetargetingBase):
         missing_target_shapes = get_invalid_target_shapes(shape_item)
         if missing_target_shapes:
             draw_text_block(
+                context,
                 layout=layout,
                 text=f"Missing Target Shapes: {missing_target_shapes}",
-                draw_in_op=True,
-                alert=True
+                alert=True,
+                in_operator=True,
             )
 
     def execute(self, context):
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 
 class EditTargetShapeBase(RetargetingBase):
@@ -583,7 +596,7 @@ class EditTargetShapeBase(RetargetingBase):
         for region in context.area.regions:
             region.tag_redraw()
 
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 
 class RemoveTargetShapeBase(RetargetingBase):
@@ -613,7 +626,7 @@ class RemoveTargetShapeBase(RetargetingBase):
             source_item.target_shapes.remove(target_shape_index)
         for region in context.area.regions:
             region.tag_redraw()
-        return{'FINISHED'}
+        return {'FINISHED'}
 
 
 class ClearTargetShapeBase(RetargetingBase):
@@ -633,10 +646,10 @@ class ClearTargetShapeBase(RetargetingBase):
             shape_item = retarget_list[self.source_shape_name]
         except KeyError:
             self.report({'ERROR'}, f'Can\'t find shape {self.source_shape_name}')
-            return{'CANCELLED'}
+            return {'CANCELLED'}
         if shape_item:
             shape_item.target_shapes.clear()
         for region in context.area.regions:
             region.tag_redraw()
 
-        return{'FINISHED'}
+        return {'FINISHED'}

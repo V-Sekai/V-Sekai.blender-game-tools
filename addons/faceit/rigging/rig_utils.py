@@ -5,6 +5,19 @@ from mathutils import Vector, Quaternion
 
 from ..core import faceit_utils as futils
 from ..core import vgroup_utils as vg_utils
+import numpy as np
+from mathutils import Vector
+
+
+def is_metarig(obj):
+    if not (obj and obj.data and obj.type == 'ARMATURE'):
+        return False
+    if 'rig_id' in obj.data:
+        return False
+    for b in obj.pose.bones:
+        if b.get("rigify_type", "") != "":
+            return True
+    return False
 
 
 def get_evaluated_vertex_group_positions(obj, vgroup_name) -> list:
@@ -36,6 +49,14 @@ def get_bounds_from_locations(locations, axis):
     return bounds
 
 
+def get_median_pos(locations):
+    '''
+    returns the center of all points in locations
+    @locations : list of points (Vector3) in one space
+    '''
+    return Vector(np.mean(locations, axis=0).tolist())
+
+
 def reset_stretch(rig_obj=None, bone=None):
     ''' reset stretch constraints '''
     # it is important to frame_set before resetting!
@@ -58,6 +79,39 @@ def get_bone_delta(bone1, bone2) -> Vector:
     pos2 = bone2.matrix.translation
     vec = pos1 - pos2
     return vec
+
+
+def set_lid_follow_constraints_new_rigify(rig, side="L"):
+    '''Set best follow location constraint influence on the lid bones.'''
+    # All bottom lid bones
+    # MCH-lid_offset.T.L.001
+    # MCH-lid_offset.T.R.001
+    bot_inner_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.001")
+    bot_mid_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.002")
+    bot_outer_lid = rig.pose.bones.get(f"MCH-lid_offset.B.{side}.003")
+    # All upper lid bones
+    top_outer_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.001")
+    top_mid_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.002")
+    top_inner_lid = rig.pose.bones.get(f"MCH-lid_offset.T.{side}.003")
+    # Calculate a delta vector for each pair (top to bottom)
+    mid_delta = get_bone_delta(top_mid_lid, bot_mid_lid)
+    outer_lid_delta = get_bone_delta(top_outer_lid, bot_outer_lid)
+    inner_lid_delta = get_bone_delta(top_inner_lid, bot_inner_lid)
+    # Set the influence of the copy location constraint
+    outer_lid_influence = outer_lid_delta.length / mid_delta.length
+    constraint = top_outer_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    constraint = bot_outer_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = outer_lid_influence
+    inner_lid_influence = inner_lid_delta.length / mid_delta.length
+    constraint = top_inner_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = inner_lid_influence
+    constraint = bot_inner_lid.constraints.get("Copy Location.002")
+    if constraint:
+        constraint.influence = inner_lid_influence
 
 
 def set_lid_follow_constraints(rig, side="L"):
