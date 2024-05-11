@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/noio/Pixel-Unwrapper.git
+	branch = main
+	commit = c4625dcdb4bc63d6ba2e373efd52765275a4e781
+	parent = 4954b4cc037e0c74106ef9bd2a32f1ecf6b10708
+	method = merge
+	cmdver = 0.4.6
