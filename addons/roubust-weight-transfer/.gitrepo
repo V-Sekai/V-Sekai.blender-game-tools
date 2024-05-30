@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/sentfromspacevr/robust-weight-transfer.git
+	branch = main
+	commit = 5ea046eea358c4898e1a15c5bd4a33222d015e6d
+	parent = a4220f966b73044ee5c0a388da496dd8af66d8d8
+	method = merge
+	cmdver = 0.4.6
