@@ -26,11 +26,9 @@ With this `pip` command you can control which platform and for which Python vers
 
 ```
 pip3 download --platform win_amd64 --python-version 310 --only-binary=:all: --no-deps -d whl -r requirements.txt
-# Macos
 pip3 download --platform macosx_10_9_x86_64 --python-version 310 --only-binary=:all: -d whl -r requirements.txt
 cd whl
 pip3 install wheel
-
 python3 -m wheel unpack libigl-2.4.1-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
 python3 -m wheel unpack numpy-1.26.4-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
 python3 -m wheel unpack robust_laplacian-0.2.7-cp310-cp310-win_amd64.whl -d ../deps

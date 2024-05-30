@@ -7,13 +7,13 @@ bl_info = {
     "location": "View3D > Sidebar > SENT Tab",
     "category": "Object",
 }
-
 import sys
 import os
 
-libs_path = os.path.join(os.path.dirname(__file__), 'deps')
-if libs_path not in sys.path:
-    sys.path.append(libs_path)
+deps_path = os.path.join(os.path.dirname(__file__), 'deps')
+for subdir, dirs, files in os.walk(deps_path):
+    if subdir not in sys.path:
+        sys.path.append(subdir)
 
 import bpy
 import bmesh
