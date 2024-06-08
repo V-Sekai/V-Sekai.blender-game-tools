@@ -30,12 +30,12 @@ pip3 download --platform macosx_10_9_x86_64 --python-version 310 --only-binary=:
 cd whl
 pip3 install wheel
 python3 -m wheel unpack libigl-2.4.1-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
-python3 -m wheel unpack numpy-1.26.4-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
+python3 -m wheel unpack robust_laplacian-0.2.7-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
+python3 -m wheel unpack scipy-1.13.1-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
+
 python3 -m wheel unpack robust_laplacian-0.2.7-cp310-cp310-win_amd64.whl -d ../deps
 python3 -m wheel unpack scipy-1.13.1-cp310-cp310-win_amd64.whl -d ../deps
 python3 -m wheel unpack libigl-2.5.1-cp310-cp310-win_amd64.whl -d ../deps
-python3 -m wheel unpack robust_laplacian-0.2.7-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
-python3 -m wheel unpack scipy-1.13.1-cp310-cp310-macosx_10_9_x86_64.whl -d ../deps
 ```
 
 The dependency wheels get downloaded into the `whl` directory. From here you can unzip the content of the wheels into the `deps` directory
