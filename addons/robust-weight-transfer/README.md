@@ -12,12 +12,27 @@ You can find a tutorial on the Gumroad page of the addon https://sentfromspacevr
 
 ### Installing Dependencies
 
+#### Option 0
+
+Locate the Python executable used by Blender.
+
+```
+import sys
+print(sys.exec_prefix)
+```
+
+Install packages using pip.
+
+```
+/Users/<username>/Library/Application\ Support/Steam/steamapps/common/Blender/blender.app/Contents/Resources/4.1/python/bin/python3.11 -m pip install --no-deps --target deps -r requirements.txt
+```
+
 #### Option 1
 
 When using the same Python version that Blender uses, you can install the dependencies with:
 
 ```
-pip install --no-deps --target deps -r requirements.txt
+pip3 install --no-deps --target deps -r requirements.txt
 ```
 
 #### Option 2
