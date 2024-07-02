@@ -13,6 +13,7 @@ from . import modifier_LOD
 from . import modifier_vertex_ao
 from . import modifier_offset_transform
 from . import modifier_lightmap
+from . import modifier_manifold
 
 # from . import modifier_rename
 
@@ -26,6 +27,7 @@ imp.reload(modifier_LOD)
 imp.reload(modifier_vertex_ao) 
 imp.reload(modifier_offset_transform) 
 imp.reload(modifier_lightmap)
+imp.reload(modifier_manifold)
 
 # imp.reload(modifier_rename) 
 
@@ -38,6 +40,7 @@ modifiers = list([
 	modifier_collider.Modifier(),
 	modifier_LOD.Modifier(),
 	modifier_vertex_ao.Modifier(),
-	modifier_lightmap.Modifier()
+	modifier_lightmap.Modifier(),
+	modifier_manifold.Modifier()
 	# TODO add apply negative scale modifier
 ])

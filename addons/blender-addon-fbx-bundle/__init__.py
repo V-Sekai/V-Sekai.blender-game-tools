@@ -501,6 +501,8 @@ class op_remove(bpy.types.Operator):
 
 
 def icon_get(name):
+	if not preview_icons:
+		return None
 	if name not in preview_icons:
 		print("Icon '{}' not found ".format(name))
 	return preview_icons[name].icon_id
