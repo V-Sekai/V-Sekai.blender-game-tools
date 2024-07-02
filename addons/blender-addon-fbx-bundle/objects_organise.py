@@ -504,15 +504,6 @@ def consolidate_objects(objects, apply_normals, merge_uvs=True, convert_mesh=Tru
 	bpy.ops.object.make_single_user(
 			type='SELECTED_OBJECTS', object=False, obdata=True)
 	
-	# TODO figure out a better way to preserve auto smooth
-	if apply_normals:
-		for obj in objects:				
-			if obj.type == 'MESH':
-				data = obj.data
-				if data.use_auto_smooth:
-					mod = obj.modifiers.new("Split Normals","EDGE_SPLIT")
-					mod.split_angle = data.auto_smooth_angle
-	
 	if convert_mesh:
 		bpy.ops.object.convert(target='MESH', keep_original=False)
 		bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)

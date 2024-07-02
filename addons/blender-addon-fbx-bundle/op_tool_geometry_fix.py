@@ -28,11 +28,6 @@ class op(bpy.types.Operator):
 				bpy.context.view_layer.objects.active = obj
 				bpy.ops.object.select_all(action="DESELECT")
 				obj.select_set(state = True)
-				
-				# Enable auto smooth
-				bpy.context.object.data.use_auto_smooth = True
-				bpy.context.object.data.auto_smooth_angle = 30 * math.pi / 180
-
 
 				# Clear custom normals data
 				bpy.ops.mesh.customdata_custom_splitnormals_clear()
