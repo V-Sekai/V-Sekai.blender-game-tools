@@ -32,7 +32,7 @@ def import_files(path):
 	# http://ricardolovelace.com/batch-import-and-export-obj-files-in-blender.html
 	path = bpy.path.abspath(path)
 
-	extensions = ['fbx', 'obj', '3ds']
+	extensions = ['fbx', 'obj', '3ds', 'gltf', 'glb']
 
 
 	filenames = sorted(os.listdir(path))
@@ -63,6 +63,19 @@ def import_files(path):
 			elif extension == '3ds':
 				if hasattr(bpy.types, bpy.ops.import_scene.autodesk_3ds.idname()):
 					bpy.ops.import_scene.autodesk_3ds(filepath = file_path)
-					
+
+			elif extension == 'gltf' or extension == 'glb':
+				if hasattr(bpy.types, bpy.ops.import_scene.gltf.idname()):
+					bpy.ops.import_scene.gltf(filepath=file_path, 
+												export_import_convert_lighting_mode='SPEC', 
+												filter_glob='*.glb;*.gltf', 
+												loglevel=0, 
+												import_pack_images=True, 
+												merge_vertices=False, 
+												import_shading='NORMALS', 
+												bone_heuristic='BLENDER', 
+												guess_original_bind_pose=True, 
+												import_webp_texture=False)
+
 		except RuntimeError:
 			print("Error importing {}".format(file_path))
