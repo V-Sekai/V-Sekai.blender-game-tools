@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/V-Sekai.blender-addon-fbx-bundle.git
 	branch = master
-	commit = 6a62428bf7f21968b1155e05eafa9b102f610d78
-	parent = cc37ba014da7a82c24ac48e9f7fe53fddefabcfc
+	commit = 3797ab9dd106c6ca0352febe1811f48267732eb9
+	parent = 57ae7cea40f6e1d9e73f69b998b0ce68110d076c
 	method = merge
 	cmdver = 0.4.6
