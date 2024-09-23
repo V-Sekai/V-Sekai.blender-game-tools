@@ -4,7 +4,6 @@ __pycache__/
 utils/rigging_parser/*.pyc
 logs/
 results/
-checkpoints/
 *.html
 *.error
 *.sbatch

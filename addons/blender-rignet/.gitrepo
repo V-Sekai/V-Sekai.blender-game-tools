@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/blender-rignet.git
 	branch = main
-	commit = 0336b64afc9a50b5191b5c06281375b8e4c5e962
+	commit = c973daca739fae83f53db3fb35b12b13d5f9c35d
 	parent = f11dfce746e65c631f05e934498680c06161d4df
 	method = merge
 	cmdver = 0.4.9
