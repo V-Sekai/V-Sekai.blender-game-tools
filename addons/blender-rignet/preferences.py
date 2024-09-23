@@ -141,8 +141,7 @@ class BrignetPrefs(bpy.types.AddonPreferences):
                     split = row.split(factor=0.1, align=False)
                     split.column()
                     col = split.column()
-                    col.label(text="CUDA hardware is present. Please make sure that CUDA Toolkit is installed")
-
+                    col.label(text="CUDA hardware is present. Please make sure that CUDA Toolkit is installed. (Tested with CUDA Toolkit 12.6 Update 1)")
                     op = col.operator(
                         'wm.url_open',
                         text='nVidia Downloads',
@@ -165,27 +164,3 @@ class BrignetPrefs(bpy.types.AddonPreferences):
         if self.missing_modules:
             sp_col = split.column()
             sp_col.operator(BrignetEnvironment.bl_idname, text='Install')
-
-        row = col.row()
-        split = row.split(factor=0.8, align=False)
-        sp_col = split.column()
-        sp_col.prop(self, 'model_path', text='Model Path')
-        if not os.path.isdir(self.model_path) or 'bonenet' not in os.listdir(self.model_path):
-            sp_col = split.column()
-            op = sp_col.operator(
-                'wm.url_open',
-                text='Download'
-            )
-            op.url = "https://umass-my.sharepoint.com/:u:/g/personal/zhanxu_umass_edu/EYKLCvYTWFJArehlo3-H2SgBABnY08B4k5Q14K7H1Hh0VA"
-
-            row = col.row()
-
-            if self.model_path:
-                row.label(text="Please, unpack the content of 'checkpoints' to")
-                row = col.row()
-                row.label(text=f"    {self.model_path}")
-            else:
-                row.label(text="Please, unpack the content of 'checkpoints' to the 'Model Path' folder")
-
-        row = layout.row()
-        row.label(text="End of bRigNet Preferences")
