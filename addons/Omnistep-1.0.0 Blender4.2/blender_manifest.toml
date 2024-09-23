@@ -1,0 +1,16 @@
+# manifest
+schema_version = "1.0.0"
+id = "omnistep"
+version = "1.0.0"
+name = "OmniStep"
+tagline = "OmniStep - A Scriptable First Person Controller for Blender"
+maintainer = "Damjan Minovski <omnistep@atair.cc>"
+type = "add-on"
+
+website = "https://omnistep.atair.cc"
+
+tags = [ "3D View", "Animation", "Game Engine", "Development" ]
+
+blender_version_min = "4.2.0"
+
+license = [ "SPDX:GPL-3.0-or-later" ]
