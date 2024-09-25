@@ -58,40 +58,51 @@ class ImportObjSeq(bpy.types.Operator, ImportHelper):
 
         def import_obj(filepath):
             with redirect_stdout(None):
-                bpy.ops.import_scene.obj(filepath=filepath, filter_glob='*.obj;*.mtl', use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0.0, axis_forward='-Z', axis_up='Y')
+                bpy.ops.wm.obj_import(
+                    filepath=filepath,
+                    filter_glob='*.obj;*.mtl',
+                    use_split_objects=True,
+                    use_split_groups=True,
+                    global_scale=1.0,
+                    clamp_size=0.0,
+                    forward_axis='NEGATIVE_Z', 
+                    up_axis='Y',
+                )
 
-        # import first obj
+        # Import first obj
         import_obj(str(filepaths[0]))
         main_obj = bpy.context.selected_objects[-1]
-        main_obj.location = [0, 0, 0]
-        main_obj.rotation_euler = [0, 0, 0]
-        main_obj.shape_key_add(name=main_obj.name)
+        main_obj.shape_key_add(name="Basis")
         for face in main_obj.data.polygons:
             face.use_smooth = True
         main_key = main_obj.data.shape_keys
         bpy.context.view_layer.objects.active = main_obj
         seq_len = len(filepaths)
 
-        # import the rest
+        # Import the rest
         for i, filepath in enumerate(filepaths[1:]):
             import_obj(str(filepath))
             current_obj = bpy.context.selected_objects[-1]
-            current_obj.location = [0, 0, 0]
-            current_obj.rotation_euler = [0, 0, 0]
+            # Prepare for join shapes
+            bpy.ops.object.select_all(action='DESELECT')
+            main_obj.select_set(True)
+            current_obj.select_set(True)
+            bpy.context.view_layer.objects.active = main_obj
 
-            # join as shapes
+            # Join as shapes
             bpy.ops.object.join_shapes()
             print(f"{i}/{seq_len}", end="\r")
 
-            # remove meshes
+            # Remove meshes
             current_mesh = current_obj.data
-            current_mat = current_obj.material_slots[0].material
+            if current_obj.material_slots and current_obj.material_slots[0].material:
+                current_mat = current_obj.material_slots[0].material
+                bpy.data.materials.remove(current_mat, do_unlink=True)
             bpy.data.objects.remove(current_obj, do_unlink=True)
             bpy.data.meshes.remove(current_mesh, do_unlink=True)
-            bpy.data.materials.remove(current_mat, do_unlink=True)
 
+        # Additional settings based on relative_shapekey
         if self.relative_shapekey:
-            # set keyframes
             main_key.use_relative = True
             for i, key_block in enumerate(main_key.key_blocks[1:]):
                 key_block.value = 0.0
@@ -100,14 +111,12 @@ class ImportObjSeq(bpy.types.Operator, ImportHelper):
                 key_block.keyframe_insert("value", frame=i+1)
                 key_block.value = 0.0
                 key_block.keyframe_insert("value", frame=i+2)
-
         else:
-            # set driver
             main_key.use_relative = False
             fcurve = main_key.driver_add("eval_time")
             fcurve.driver.expression = "frame*10"
 
-        # set start/end time
+        # Set start/end time
         bpy.context.scene.frame_start = 0
         bpy.context.scene.frame_end = seq_len - 1
 
