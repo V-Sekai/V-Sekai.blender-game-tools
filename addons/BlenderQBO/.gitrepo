@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/V-Sekai/BlenderQBO.git
 	branch = main
-	commit = 4735e3ed575b2a6f3f61dd7854f1c1d87029ff12
-	parent = 728ae30e340f31692aaf5c9349df8350bf196136
+	commit = 9d799f58de35fe457de794c41a7eaa52ae6457ce
+	parent = d5c0c61bf52e4dc735d34aeea40fc6d513648ba3
 	method = merge
 	cmdver = 0.4.9
