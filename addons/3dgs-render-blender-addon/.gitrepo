@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Kiri-Innovation/3dgs-render-blender-addon.git
+	branch = main
+	commit = b959c44c7a19f333f8253e694f23aa358b123b66
+	parent = 476bc90c147a0e489f8ba25046e1cc14ca7ecfc1
+	method = merge
+	cmdver = 0.4.9
