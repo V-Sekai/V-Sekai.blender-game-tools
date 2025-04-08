@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/V-Sekai-fire/VRM-Addon-for-Blender.git
+	branch = README
+	commit = 19618423e03360e526f0ef7c36c0ab51e334a27f
+	parent = 631db8ecbebc5ebaf722f220dc787713afbe5df8
+	method = merge
+	cmdver = 0.4.9

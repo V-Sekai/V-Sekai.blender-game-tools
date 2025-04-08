@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: MIT OR GPL-3.0-or-later
+name: pages-update
+
+permissions:
+  contents: write
+
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  release:
+    types: [published]
+
+jobs:
+  build-gh-pages:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          set -x
+
+          if [ "$GITHUB_REF_NAME" == "README" ]; then
+            git fetch --depth=1 origin main
+            git checkout main
+          fi
+
+          if ! curl \
+            --fail \
+            --retry 20 \
+            --retry-all-errors \
+            --show-error \
+            --location \
+            --output releases_latest.json \
+            --header "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/releases/latest; then
+
+            if [ "$GITHUB_REPOSITORY_OWNER" != "saturday06" ]; then
+              exit 0
+            fi
+            exit 1
+          fi
+
+          HUGO_VRM_ADDON_FOR_BLENDER_LATEST_VERSION_NAME=$(ruby -rjson -e "puts JSON.parse(File.read('releases_latest.json'))['name']")
+          export HUGO_VRM_ADDON_FOR_BLENDER_LATEST_VERSION_NAME
+          HUGO_VRM_ADDON_FOR_BLENDER_LATEST_PUBLISH_DATE=$(ruby -rjson -e "puts JSON.parse(File.read('releases_latest.json'))['published_at']")
+          export HUGO_VRM_ADDON_FOR_BLENDER_LATEST_PUBLISH_DATE
+
+          ./tools/install_hugo.sh
+
+          git fetch --depth=1 origin gh-pages
+          cd docs/website
+          mkdir public
+          pushd public
+            cp -fr ../../../.git .git
+            git checkout gh-pages
+          popd
+
+          ~/.local/bin/hugo --minify
+
+      - name: Deploy
+        run: |
+          set -x
+
+          git fetch --depth=1 origin README
+          git fetch --depth=1 origin main
+          git fetch --depth=1 origin website || true
+          git fetch --depth=1 origin unplanned-release || true
+          case "$GITHUB_SHA" in
+            "") exit 0;;
+            "$(git rev-parse origin/README)");;
+            "$(git rev-parse origin/main)");;
+            "$(git rev-parse origin/website || true)");;
+            "$(git rev-parse origin/unplanned-release || true)");;
+            *) exit 0;;
+          esac
+
+          cd docs/website/public
+          git add .
+          if git diff --cached --exit-code; then
+            exit 0
+          fi
+          git config --global user.email "isamu@leafytree.jp"
+          git config --global user.name "[BOT] Isamu Mogi"
+          git commit -m "docs: update to $GITHUB_SHA [BOT]"
+          git push origin gh-pages

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT OR GPL-3.0-or-later
+name: release-please
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_run:
+    workflows: ["test"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      release_release_created: ${{ steps.release.outputs.release_created }}
+      release_sha: ${{ steps.release.outputs.sha }}
+      release_tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # これをやるとrelease-please-actionが安定する気がする
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          target-branch: main
+          # 通常の運用ではskip-github-pull-requestは有効化しない。
+          # しかし、このレポジトリの運用ではrelease-please-actionがrelease-prがマージされたかを検知できないため
+          # release-prがマージされたタイミングで、バージョンだけ進んだ全く同一のrelease-prが新規作成されてしまう。
+          # それを防ぐため、はじめにskip-github-pull-request=falseで一度release-please-actionを実行する。
+          # 結果release_createdがfalseの場合ときは再度release-please-actionを実行し、通常通りrelease-prを
+          # 作成したり更新したりする。
+          skip-github-pull-request: true
+      - uses: googleapis/release-please-action@v4
+        if: ${{ !steps.release.outputs.release_created }}
+        with:
+          target-branch: main
+
+  upload-release-archive:
+    runs-on: ubuntu-24.04
+    needs: release-please
+    if: ${{ needs.release-please.result == 'success' && needs.release-please.outputs.release_release_created }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.release_sha }}
+      - name: Install package
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get dist-upgrade -y
+          sudo apt-get install -y advancecomp blender curl git python3 python3-numpy ruby shellcheck xz-utils
+      - name: Release
+        run: ./tools/release.sh "$RELEASE_TAG_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG_NAME: ${{ needs.release-please.outputs.release_tag_name }}

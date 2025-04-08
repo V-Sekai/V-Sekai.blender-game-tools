@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT OR GPL-3.0-or-later
+name: close-resolved-stale-issues
+
+permissions: {}
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  close-resolved-stale-issues:
+    runs-on: ubuntu-24.04
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: -1
+          days-before-close: 120
+          stale-issue-label: "resolved; will close if no new info for 120 days"
+          close-issue-message: "This issue was closed because it has been inactive for 120 days since being marked as resolved."
+          close-issue-reason: completed
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
