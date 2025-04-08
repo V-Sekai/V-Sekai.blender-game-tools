@@ -1,0 +1,25 @@
+name: release
+
+on:
+  push:
+    tags:
+      - '*_*_*'
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install package
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get dist-upgrade -y
+          sudo apt-get install -y advancecomp blender curl git python3 python3-numpy ruby shellcheck xz-utils
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Release
+        run: ./tools/release.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

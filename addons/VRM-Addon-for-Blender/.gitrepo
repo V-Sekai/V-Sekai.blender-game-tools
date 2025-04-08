@@ -5,8 +5,8 @@
 ;
 [subrepo]
 	remote = https://github.com/V-Sekai-fire/VRM-Addon-for-Blender.git
-	branch = README
-	commit = 19618423e03360e526f0ef7c36c0ab51e334a27f
-	parent = 631db8ecbebc5ebaf722f220dc787713afbe5df8
+	branch = tdw46-Runtime-Springbones
+	commit = afd2e09ecf777796c591372fd00b371240d42b72
+	parent = 7ab432bc3f0f7e7b4992c49f094d8d896a94e2bd
 	method = merge
 	cmdver = 0.4.9

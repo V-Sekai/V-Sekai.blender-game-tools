@@ -1,8 +1,4 @@
-# SPDX-License-Identifier: MIT OR GPL-3.0-or-later
 name: pages-update
-
-permissions:
-  contents: write
 
 on:
   push:
@@ -12,18 +8,13 @@ on:
     types: [published]
 
 jobs:
-  build-gh-pages:
-    runs-on: ubuntu-24.04
+  build:
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: |
           set -x
-
-          if [ "$GITHUB_REF_NAME" == "README" ]; then
-            git fetch --depth=1 origin main
-            git checkout main
-          fi
 
           if ! curl \
             --fail \
@@ -46,7 +37,20 @@ jobs:
           HUGO_VRM_ADDON_FOR_BLENDER_LATEST_PUBLISH_DATE=$(ruby -rjson -e "puts JSON.parse(File.read('releases_latest.json'))['published_at']")
           export HUGO_VRM_ADDON_FOR_BLENDER_LATEST_PUBLISH_DATE
 
-          ./tools/install_hugo.sh
+          hugo_dir=$(mktemp -d)
+
+          pushd "$hugo_dir"
+            curl \
+              --fail \
+              --retry 20 \
+              --retry-all-errors \
+              --show-error \
+              --location \
+              --output hugo_extended.tar.gz \
+              --header "Accept: application/vnd.github.v3+json" \
+              https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_extended_0.111.3_Linux-64bit.tar.gz
+            tar xf hugo_extended.tar.gz
+          popd
 
           git fetch --depth=1 origin gh-pages
           cd docs/website
@@ -56,22 +60,16 @@ jobs:
             git checkout gh-pages
           popd
 
-          ~/.local/bin/hugo --minify
+          "$hugo_dir/hugo" --minify
 
       - name: Deploy
         run: |
           set -x
 
-          git fetch --depth=1 origin README
-          git fetch --depth=1 origin main
-          git fetch --depth=1 origin website || true
-          git fetch --depth=1 origin unplanned-release || true
+          git fetch --depth=1 origin main website
           case "$GITHUB_SHA" in
-            "") exit 0;;
-            "$(git rev-parse origin/README)");;
             "$(git rev-parse origin/main)");;
-            "$(git rev-parse origin/website || true)");;
-            "$(git rev-parse origin/unplanned-release || true)");;
+            "$(git rev-parse origin/website)");;
             *) exit 0;;
           esac
 
