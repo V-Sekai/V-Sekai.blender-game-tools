@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://gitlab.com/dypsloom/rigonthefly.git
+	branch = master
+	commit = 29fa99a88cb23a991d400bfcd60458f46f69e47b
+	parent = 1df99f1d803315433ac1b0b934d386809f62eb11
+	method = merge
+	cmdver = 0.4.9
