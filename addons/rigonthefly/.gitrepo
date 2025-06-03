@@ -5,8 +5,8 @@
 ;
 [subrepo]
 	remote = https://gitlab.com/dypsloom/rigonthefly.git
-	branch = master
-	commit = 29fa99a88cb23a991d400bfcd60458f46f69e47b
-	parent = 1df99f1d803315433ac1b0b934d386809f62eb11
+	branch = v2-beta
+	commit = 4b005d2eb705d53ca0cdfe7fefba08b0cb81db04
+	parent = 0ffbc2f6faa3d75c6e7ca3c6ba07919199a3dfb7
 	method = merge
 	cmdver = 0.4.9

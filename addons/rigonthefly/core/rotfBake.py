@@ -338,8 +338,7 @@ def KeyframeClear(pboneList):
                 if pbone.id_data == obj:
                     if action.groups.get(pbone.name):
                         for fcurve in action.groups[pbone.name].channels:
-                            if fcurve.data_path:
-                                action.fcurves.remove(fcurve)
+                            action.fcurves.remove(fcurve)
 
 def BoneHasChannelInAction(pbone, channels, action):
 

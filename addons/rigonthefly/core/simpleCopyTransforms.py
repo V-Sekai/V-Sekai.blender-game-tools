@@ -132,6 +132,7 @@ def SimpleCopyTransforms():
 
     obj = bpy.context.object
     activePbone = bpy.context.active_pose_bone
+
     for pbone in bpy.context.selected_pose_bones:
         if pbone != activePbone:
 

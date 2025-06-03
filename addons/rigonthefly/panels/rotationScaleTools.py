@@ -1,6 +1,7 @@
 import bpy
 
 from .main import ToolPanel, separator
+#from ..operators import info
 from ..core.icon_manager import Icons
 
 

@@ -11,7 +11,7 @@ bl_info = {
     'category': 'Animation',
     'location': 'View 3D > Tool Shelf > Rig On The Fly 2.0',
     'description': '',
-    'version': (2, 0, 9),
+    'version': (2, 0, 8),
     'blender': (4, 2, 0)
 }
 
@@ -24,7 +24,6 @@ import sys
 
 if "bpy" not in locals():
     import bpy
-    from bpy.app.handlers import persistent
     from . import core
     from . import panels
     from . import operators
@@ -36,25 +35,6 @@ else:
     importlib.reload(operators)
     importlib.reload(properties)
 
-@persistent
-def execute_bone_selection_change_handler(context):
-    if bpy.context.mode == "POSE":
-        selected_pose_bones = bpy.context.selected_pose_bones
-        selection_length = len(selected_pose_bones)
-
-        if selection_length == 0:
-            bpy.rotf_pose_bone_selection.clear()
-        else:
-            current_selection = set(bpy.rotf_pose_bone_selection)
-            new_selection = set(selected_pose_bones)
-
-            # Add new selections
-            for pbone in new_selection - current_selection:
-                bpy.rotf_pose_bone_selection.append(pbone)
-
-            # Remove deselections
-            for pbone in current_selection - new_selection:
-                bpy.rotf_pose_bone_selection.remove(pbone)
 
 # List of all buttons and panels
 classes = [  # These panels will always be loaded, all panel ui should go in here
@@ -151,8 +131,6 @@ def register():
     # Register classes
     for cls in classes:
         bpy.utils.register_class(cls)
-
-    bpy.app.handlers.depsgraph_update_post.append(execute_bone_selection_change_handler)
 
     # Register all custom propreties
     properties.register()

@@ -1,7 +1,7 @@
 # RigOnTheFly
-Version : 2.0.9
+Version : 2.0.8-beta
 
-Rig on the Fly is a Blender 3.6 and 4.4 dynamic rigging tool used to simplify and speed up animation workflow.  
+Rig on the Fly is a Blender 3.6 and 4.0 dynamic rigging tool used to simplify and speed up animation workflow.  
 Inspired by Richard Lico's GDC 2018 talk: [Animating Quill: Creating an Emotional Experience](https://www.youtube.com/watch?v=u3CzLVpuE4k&t=2011s) and his Animation Sherpa Space Switching course.  
   
 The main goal of Rig on the Fly is to facilitates animators job by automating repetitive tasks such as rigging. It does so by modularizing the rig allowing changes to how it functions on the fly without losing motion. Letting animators focus on performance rather than find ways to circumvent rig limitations.
@@ -11,19 +11,17 @@ If you have any questions or suggestions you can contact us on dypsloom's [disco
 You can also check other cool things that we do on [dypsloom.com](https://dypsloom.com/).
 
 ### Compatibility
-Blender 3.6 and 4.4
+Blender 3.6 and 4.2
 
 ### Known Issues   
 If an animation uses exaggerated non-uniform scale transforms, baking or exporting the animation can look different.
 
 ### Features to Fix/Improve  
--
 
 ### Future Features
--
 
 ### Installation
-Go to the following address [https://gitlab.com/dypsloom/rigonthefly](https://gitlab.com/dypsloom/rigonthefly) and download the addon to a chosen folder on your computer.   
+Go to the following address [https://gitlab.com/dypsloom/rigonthefly/-/tree/v2-beta](https://gitlab.com/dypsloom/rigonthefly/-/tree/v2-beta) and download the addon to a chosen folder on your computer.   
 
 Then in Blender, go to "Add-ons" tab on the preference window. There click on the "Install" button and navigate to the folder where you downloaded the addon. Choose the RigOnTheFly file and it will be installed.
 

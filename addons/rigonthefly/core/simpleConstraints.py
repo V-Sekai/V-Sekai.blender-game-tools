@@ -10,7 +10,6 @@ from . import rotfBake
 
 def RemoveSimpleConstraints():
     for pbone in bpy.context.selected_pose_bones:
-        
         constraintToRemoveList = list()
         for constraint in pbone.constraints:
             if " Simple RotF" in constraint.name:

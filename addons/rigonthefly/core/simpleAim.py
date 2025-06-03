@@ -108,6 +108,7 @@ def SimpleAim():
     aimSettingsList = list()
 
     pboneSelection = bpy.rotf_pose_bone_selection
+
     for i, pbone in enumerate(pboneSelection[:-1]):
         aimSettings = SimpleAimSettings()
         aimSettings.object = pbone.id_data
