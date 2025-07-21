@@ -1,6 +1,7 @@
 # Blender Settings
 
 1. Disable splash screen
+1. Set the scene frames per second to 30 FPS
 1. Remove default cube, light and camera. Then, save.
 1. Set color picker to HSL
 1. Enable status to show scene stats.
