@@ -146,7 +146,7 @@ In `~/.config/hermes-agent/config.yaml` (or `%APPDATA%\hermes\config.yaml` on Wi
 
 ```yaml
 mcp_servers:
-  - name: blender
+  blender:
     command: uvx
     args:
       - "--from"
