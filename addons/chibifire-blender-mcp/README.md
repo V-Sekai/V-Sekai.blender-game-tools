@@ -16,12 +16,12 @@ Fork of [BlenderMCP](https://github.com/ahujasid/blender-mcp) by Siddharth Ahuja
 
 ## Architecture
 
-- `src/blender_mcp_addon/` — Blender addon (Extension format with `blender_manifest.toml`). Hosts the TCP server and dispatches commands.
+- `/` — Blender addon (Extension format with `blender_manifest.toml`). Hosts the TCP server and dispatches commands.
   - `__init__.py` — registration entry point
   - `server.py` — `BlenderMCPServer` core (socket, dispatch, scene/object/screenshot, `execute_code`)
   - `preferences.py`, `panel.py`, `operators.py`, `state.py`, `common.py`
   - `integrations/{polyhaven,sketchfab,hyper3d,hunyuan3d}.py` — per-service mixins
-- `src/blender_mcp/server.py` — FastMCP server. Connects to the addon socket and exposes Blender as MCP tools.
+- `blender_mcp/` — FastMCP server. Connects to the addon socket and exposes Blender as MCP tools.
 
 Settings (port, integration toggles, API keys) live in the addon's user preferences, so they survive File > New, Open File, and scene resets.
 
@@ -51,15 +51,15 @@ Clone this repo, then zip the package directory:
 macOS / Linux:
 ```bash
 git clone https://github.com/chibifire/chibifire-blender-mcp
-cd chibifire-blender-mcp/src
-zip -r ../blender_mcp_addon.zip blender_mcp_addon
+cd chibifire-blender-mcp
+zip -r ../blender_mcp_addon.zip .
 ```
 
 Windows (PowerShell):
 ```powershell
 git clone https://github.com/chibifire/chibifire-blender-mcp
-cd chibifire-blender-mcp\src
-Compress-Archive -Path blender_mcp_addon -DestinationPath ..\blender_mcp_addon.zip
+cd chibifire-blender-mcp
+Compress-Archive -Path * -DestinationPath ..\blender_mcp_addon.zip
 ```
 
 The result is `blender_mcp_addon.zip` at the repo root.
@@ -138,6 +138,20 @@ On Windows, wrap the command in `cmd /c`:
         }
     }
 }
+```
+
+#### Hermes Agent
+
+In `~/.config/hermes-agent/config.yaml` (or `%APPDATA%\hermes\config.yaml` on Windows):
+
+```yaml
+mcp_servers:
+  - name: blender
+    command: uvx
+    args:
+      - "--from"
+      - "git+https://github.com/chibifire/chibifire-blender-mcp"
+      - "blender-mcp"
 ```
 
 Run only one MCP server at a time. If both Cursor and Claude Desktop launch one, they will fight over the Blender socket.
