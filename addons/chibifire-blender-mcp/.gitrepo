@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/chibifire/chibifire-blender-mcp.git
+	branch = main
+	commit = 49255e9f076409a8fee386b5e6713275260a19de
+	parent = 20cb6722a7af97f9497d70e745d8087846560056
+	method = merge
+	cmdver = 0.4.9

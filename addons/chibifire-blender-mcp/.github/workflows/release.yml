@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          full="${GITHUB_REF_NAME#v}"
+          base="${full%%-*}"
+          if [ "$full" != "$base" ]; then
+            is_pre=true
+          else
+            is_pre=false
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "is_pre=$is_pre" >> "$GITHUB_OUTPUT"
+          echo "Tag: $GITHUB_REF_NAME -> full=$full, base=$base, prerelease=$is_pre"
+
+      - name: Verify base version matches manifests
+        run: |
+          base='${{ steps.version.outputs.base }}'
+          pyver=$(grep -E '^version[[:space:]]*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          manver=$(grep -E '^version[[:space:]]*=' src/blender_mcp_addon/blender_manifest.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          blver=$(python3 -c "import re; m=re.search(r'\"version\":\s*\(([0-9]+),\s*([0-9]+),\s*([0-9]+)\)', open('src/blender_mcp_addon/__init__.py').read()); print('.'.join(m.groups()))")
+          echo "base=$base  pyproject=$pyver  manifest=$manver  bl_info=$blver"
+          if [ "$base" != "$pyver" ] || [ "$base" != "$manver" ] || [ "$base" != "$blver" ]; then
+            echo "::error::Tag base version ($base) does not match pyproject/manifest/bl_info"
+            exit 1
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build Python distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Build Blender addon zip
+        run: |
+          ZIP_NAME="blender_mcp_addon-${{ steps.version.outputs.full }}.zip"
+          (cd src && zip -r "../dist/${ZIP_NAME}" blender_mcp_addon -x '*/__pycache__/*' '*.pyc')
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/${{ env.ZIP_NAME }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          prerelease: ${{ steps.version.outputs.is_pre == 'true' }}

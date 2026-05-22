@@ -1,0 +1,24 @@
+schema_version = "1.0.0"
+
+id = "blender_mcp_addon"
+version = "2.0.0"
+name = "Blender MCP"
+tagline = "Connect Blender to Claude via MCP"
+maintainer = "K. S. Ernest (iFire) Lee <ernest.lee@chibifire.com>"
+type = "add-on"
+
+website = "https://github.com/chibifire/chibifire-blender-mcp"
+
+tags = ["Interface", "Development"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:MIT"]
+copyright = [
+    "2025 Siddharth Ahuja",
+    "2026 K. S. Ernest (iFire) Lee",
+]
+
+[permissions]
+network = "Optional Poly Haven, Sketchfab, Hyper3D Rodin, and Tencent Hunyuan 3D integrations"
+files = "Downloading assets and importing them into the scene"
