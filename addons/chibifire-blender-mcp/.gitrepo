@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/chibifire/chibifire-blender-mcp.git
 	branch = main
-	commit = 49255e9f076409a8fee386b5e6713275260a19de
+	commit = f9ed6bf3ebfd20a046ec3f03e7fb53925938d63d
 	parent = 20cb6722a7af97f9497d70e745d8087846560056
 	method = merge
 	cmdver = 0.4.9
